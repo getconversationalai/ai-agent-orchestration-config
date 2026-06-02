@@ -1,0 +1,11 @@
+# repo-relative-path | home-path   (dirs end in / and copy recursively)
+claude/CLAUDE.md       | ~/.claude/CLAUDE.md
+claude/settings.json   | ~/.claude/settings.json
+claude/hooks/          | ~/.claude/hooks/
+gemini/GEMINI.md       | ~/.gemini/GEMINI.md
+gemini/settings.json   | ~/.gemini/settings.json
+gemini/hooks/          | ~/.gemini/hooks/
+codex/AGENTS.md        | ~/.codex/AGENTS.md
+codex/config.toml      | ~/.codex/config.toml
+codex/hooks/           | ~/.codex/hooks/
+ai-instructions/       | ~/.ai-instructions/

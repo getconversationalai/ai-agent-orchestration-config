@@ -1,0 +1,81 @@
+{
+  "mcpServers": {
+    "pencil": {
+      "command": "C:\\Users\\yehos\\.pencil\\mcp\\cursor\\out\\mcp-server-windows-x64.exe",
+      "args": [
+        "--app",
+        "cursor",
+        "--agent",
+        "geminiCLI"
+      ],
+      "env": {}
+    }
+  },
+  "general": {
+    "sessionRetention": {
+      "enabled": true,
+      "maxAge": "30d",
+      "warningAcknowledged": true
+    }
+  },
+  "ide": {
+    "hasSeenNudge": true
+  },
+  "security": {
+    "auth": {
+      "selectedType": "oauth-personal"
+    }
+  },
+  "hooks": {
+    "BeforeTool": [
+      {
+        "matcher": "shell|run_command|execute_command|bash",
+        "hooks": [
+          {
+            "name": "block-dangerous-commands",
+            "type": "command",
+            "command": "py ~/.gemini/hooks/beforetool_shell.py",
+            "timeout": 5000
+          }
+        ]
+      },
+      {
+        "matcher": "write_file|replace|edit_file|patch|create_file",
+        "hooks": [
+          {
+            "name": "block-dangerous-code",
+            "type": "command",
+            "command": "py ~/.gemini/hooks/beforetool_code.py",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "AfterTool": [
+      {
+        "matcher": "write_file|create_file",
+        "hooks": [
+          {
+            "name": "migration-reminder",
+            "type": "command",
+            "command": "py ~/.gemini/hooks/aftertool_write.py",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "AfterAgent": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "name": "post-turn-checks",
+            "type": "command",
+            "command": "bash ~/.gemini/hooks/afteragent_checks.sh",
+            "timeout": 10000
+          }
+        ]
+      }
+    ]
+  }
+}

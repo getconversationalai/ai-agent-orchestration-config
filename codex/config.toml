@@ -1,0 +1,18 @@
+model = "gpt-5.4"
+service_tier = "fast"
+
+[projects."\\\\?\\C:\\dev\\Voice AI Agent Builder Platform"]
+trust_level = "trusted"
+
+[projects."\\\\?\\C:\\dev\\reply-flow"]
+trust_level = "trusted"
+
+[notice.model_migrations]
+"gpt-5.3-codex" = "gpt-5.4"
+
+[windows]
+sandbox = "elevated"
+
+[mcp_servers.pencil]
+command = "C:\\Users\\yehos\\.pencil\\mcp\\cursor\\out\\mcp-server-windows-x64.exe"
+args = [ "--app", "cursor", "--agent", "codexCLI" ]

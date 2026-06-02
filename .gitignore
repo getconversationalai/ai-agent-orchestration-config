@@ -1,0 +1,25 @@
+# Credentials & machine-local state — NEVER commit
+**/settings.local.json
+**/auth.json
+**/oauth_creds.json
+**/google_accounts.json
+**/installation_id
+**/.env
+**/.env.*
+
+# Databases, logs, history, caches
+**/*.sqlite
+**/*.sqlite-shm
+**/*.sqlite-wal
+**/history.jsonl
+**/*.log
+**/logs/
+**/sessions/
+**/tmp/
+**/*cache*/
+**/__pycache__/
+**/*.pyc
+
+# Backups from the router restructure
+*.pre-router.bak
+*.bak

@@ -1,0 +1,241 @@
+{
+  "env": {},
+  "permissions": {
+    "allow": [
+      "Bash",
+      "Read",
+      "Write",
+      "Edit",
+      "Glob",
+      "Grep",
+      "WebFetch",
+      "WebSearch",
+      "Agent",
+      "mcp__*",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_navigate_back",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_console_messages",
+      "mcp__playwright__browser_network_requests",
+      "mcp__playwright__browser_resize",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_close",
+      "mcp__playwright__browser_install",
+      "mcp__playwright__browser_tabs",
+      "mcp__plugin_playwright_playwright__browser_navigate",
+      "mcp__plugin_playwright_playwright__browser_navigate_back",
+      "mcp__plugin_playwright_playwright__browser_snapshot",
+      "mcp__plugin_playwright_playwright__browser_take_screenshot",
+      "mcp__plugin_playwright_playwright__browser_console_messages",
+      "mcp__plugin_playwright_playwright__browser_network_requests",
+      "mcp__plugin_playwright_playwright__browser_resize",
+      "mcp__plugin_playwright_playwright__browser_wait_for",
+      "mcp__plugin_playwright_playwright__browser_close",
+      "mcp__plugin_playwright_playwright__browser_install",
+      "mcp__plugin_playwright_playwright__browser_tabs",
+      "mcp__pencil"
+    ],
+    "deny": [
+      "Bash(git reset --hard *)",
+      "Bash(git checkout . *)",
+      "Bash(git clean *)",
+      "Bash(git push --force *)",
+      "Bash(sudo *)"
+    ],
+    "defaultMode": "acceptEdits"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py ~/.claude/hooks/pretooluse_bash.py"
+          },
+          {
+            "type": "command",
+            "command": "py ~/.claude/hooks/pretooluse_bash_confirm.py"
+          },
+          {
+            "type": "command",
+            "command": "py ~/.claude/hooks/pretooluse_git_drift_check.py"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py ~/.claude/hooks/pretooluse_code.py"
+          },
+          {
+            "type": "command",
+            "command": "py ~/.claude/hooks/pretooluse_main_worktree_guard.py"
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py ~/.claude/hooks/pretooluse_code.py"
+          },
+          {
+            "type": "command",
+            "command": "py ~/.claude/hooks/pretooluse_main_worktree_guard.py"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py ~/.claude/hooks/posttooluse_write.py"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py ~/.claude/hooks/posttooluse_bash.py"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py ~/.claude/hooks/userpromptsubmit_pushsql.py"
+          },
+          {
+            "type": "command",
+            "command": "py ~/.claude/hooks/userpromptsubmit_worktree_state.py"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py ~/.claude/hooks/sessionstart_drift_check.py"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'MAIN_WT=$(git rev-parse --show-toplevel 2>/dev/null); OTHER_WTS=$(git worktree list 2>/dev/null | grep -v \"$MAIN_WT\" 2>/dev/null); if [ -z \"$OTHER_WTS\" ]; then exit 0; fi; STALE=\"\"; while IFS= read -r line; do WT_PATH=$(echo \"$line\" | awk \"{print \\$1}\"); WT_BRANCH=$(echo \"$line\" | sed \"s/.*\\[//;s/\\].*//\"); if [ -f \"WORKBOARD.md\" ] && grep -q \"$WT_BRANCH\" WORKBOARD.md 2>/dev/null && grep -A5 \"$WT_BRANCH\" WORKBOARD.md | grep -qiE \"active|waiting\"; then continue; fi; STALE=\"$STALE\\n$line\"; done <<< \"$OTHER_WTS\"; if [ -n \"$STALE\" ]; then echo \"âš ï¸ Worktrees not referenced in WORKBOARD.md (may be stale):\"; echo -e \"$STALE\"; echo \"If these are done, run: git worktree prune\"; fi'"
+          },
+          {
+            "type": "command",
+            "command": "bash -c 'if [ -f \"WORKBOARD.md\" ]; then echo \"Reminder: Update WORKBOARD.md â€” move completed subagent work to Completed section.\"; fi'"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -ExecutionPolicy Bypass -File \"C:\\Users\\yehos\\.claude\\notifications\\notify-custom.ps1\" notification claude"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'BRANCH=$(git branch --show-current 2>/dev/null); if [ \"$BRANCH\" = \"main\" ] || [ \"$BRANCH\" = \"master\" ]; then CHANGES=$(git diff --name-only -- \"*.ts\" \"*.tsx\" \"*.js\" \"*.jsx\" \"*.py\" \"*.css\" \"*.json\" 2>/dev/null | head -1); if [ -n \"$CHANGES\" ]; then echo \"âš ï¸ You have uncommitted code changes on $BRANCH. Create a feature branch.\"; fi; fi'"
+          },
+          {
+            "type": "command",
+            "command": "bash -c 'if git rev-parse --show-toplevel >/dev/null 2>&1; then CHANGED=$(git diff --name-only -- \"*.ts\" \"*.tsx\" \"*.js\" \"*.jsx\" \"*.py\" \"*.go\" \"*.rs\" 2>/dev/null | head -1); if [ -n \"$CHANGED\" ] && [ ! -f \"WORKBOARD.md\" ]; then echo \"âš ï¸ Code changes detected but no WORKBOARD.md. Create one to coordinate with other agents.\"; fi; fi'"
+          },
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/stop_debug_scan.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash -c 'GIT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null); if [ -n \"$GIT_ROOT\" ] && [ ! -d \"$GIT_ROOT/.git\" ]; then echo \"ðŸš¨ CRITICAL: .git directory has been DESTROYED at $GIT_ROOT/.git! STOP ALL WORK IMMEDIATELY. Recovery: git init && git remote add origin <url> && git fetch origin && git checkout -B main origin/main\"; fi'"
+          },
+          {
+            "type": "command",
+            "command": "py ~/.claude/hooks/stop_cleanup_playwright_screenshots.py"
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -ExecutionPolicy Bypass -File \"C:\\Users\\yehos\\.claude\\notifications\\notify-custom.ps1\" stop claude"
+          }
+        ]
+      }
+    ]
+  },
+  "enabledPlugins": {
+    "frontend-design@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": true,
+    "github@claude-plugins-official": true,
+    "feature-dev@claude-plugins-official": true,
+    "code-simplifier@claude-plugins-official": true,
+    "playwright@claude-plugins-official": true,
+    "typescript-lsp@claude-plugins-official": true,
+    "commit-commands@claude-plugins-official": true,
+    "security-guidance@claude-plugins-official": true,
+    "claude-md-management@claude-plugins-official": true,
+    "pyright-lsp@claude-plugins-official": true,
+    "supabase@claude-plugins-official": true,
+    "claude-code-setup@claude-plugins-official": true,
+    "explanatory-output-style@claude-plugins-official": true,
+    "greptile@claude-plugins-official": true,
+    "hookify@claude-plugins-official": true,
+    "stripe@claude-plugins-official": true,
+    "postman@claude-plugins-official": true,
+    "code-review@claude-plugins-official": true,
+    "skill-creator@claude-plugins-official": true,
+    "remember@claude-plugins-official": true,
+    "mcp-server-dev@claude-plugins-official": true,
+    "cloudflare@claude-plugins-official": true,
+    "brightdata-plugin@claude-plugins-official": true,
+    "chrome-devtools-mcp@chrome-devtools-plugins": true,
+    "resend@claude-plugins-official": true
+  },
+  "extraKnownMarketplaces": {
+    "chrome-devtools-plugins": {
+      "source": {
+        "source": "github",
+        "repo": "ChromeDevTools/chrome-devtools-mcp"
+      }
+    }
+  },
+  "skipDangerousModePermissionPrompt": false,
+  "effortLevel": "xhigh"
+}
