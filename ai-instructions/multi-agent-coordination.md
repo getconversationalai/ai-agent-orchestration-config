@@ -308,6 +308,8 @@ The moment you mark a **phase** or a **plan** as done (via `workboard.py done --
 
 **Lead with the completed checklist.** Immediately BEFORE the plain-English "What was done" — i.e. as the first thing in the completion turn — surface the finished work as a checked-off list, with every item the phase/plan covered ticked (✓). This is the final TodoWrite list in its completed state (every item `completed`), so the user sees the full scope ticked through at a glance before reading the prose. Only then write the four-part summary below it.
 
+**Update the checklist live during execution too — not only at completion.** Mark each item `completed` the instant it's done via its OWN TodoWrite call (one status change per call, never batched), so the list visibly re-renders with each tick as work progresses. The completion checklist above is simply that same list in its final all-✓ state.
+
 The summary MUST cover four things:
 
 1. **What was done** — in plain language a non-technical stakeholder could follow. Not a file-by-file diff. Describe what now *works*, or what the user can *do* that they couldn't before. One short paragraph or 2-4 bullets.

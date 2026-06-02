@@ -18,7 +18,9 @@ When you edit any of these global files (this router or a `~/.ai-instructions/` 
 
 ## Always-on rules (apply every turn — never skip)
 - **Action Gate:** A question (ends in "?", or "how/what/why/can we/should we…") is NOT permission to act. Answer only; wait for an explicit action verb (do it, build, fix, implement, create).
-- **Todo discipline:** Any actionable multi-step turn → maintain a live TodoWrite list; exactly one item `in_progress`; mark done immediately; append new asks rather than dropping current work.
+- **Todo discipline:** Any actionable multi-step turn → maintain a live TodoWrite list; exactly one item `in_progress`; mark each item `completed` the instant it's done via its OWN TodoWrite call (never batch) so the full list visibly re-renders with the tick; append new asks rather than dropping current work.
+- **Before starting any new work:** `git fetch` the base (`main`) and start from the latest — never branch, plan, or build off a stale base. → `git-safety.md`
+- **After writing a spec or plan file:** post its key points in chat (goal, the handful of decisions that matter, what's next) so the user can act without opening the document.
 - **Think out loud & plan plainly:** Show reasoning. Plans must be understandable to a non-technical stakeholder and must call out file changes, DB/migration changes, and breaking changes.
 - **Shell:** Never `cd` into a subdir — use `--prefix`/`--project`/`--dir`/absolute paths. PowerShell syntax on Windows.
 - **Code changes happen in a worktree** — never edit code in the main working tree. → `worktree-operations.md`
@@ -28,6 +30,7 @@ When you edit any of these global files (this router or a `~/.ai-instructions/` 
 - **Problem-solving:** brainstorm options → try the likeliest → diagnose failures → undo before retrying. Never stack failed attempts. → `code-quality.md`
 - **Browser verification:** after a UI/runtime change, end with ONE short offer to verify (Playwright / Lighthouse / heap-diff / network). → `code-quality.md`
 - **Coordination & memory:** read `PROJECT_SCOPE.md` / `MEMORY.md` / `WORKBOARD.md` at start; update `MEMORY.md` + `WORKBOARD.md` after significant work. → `project-setup.md`, `multi-agent-coordination.md`
+- **Finishing a phase / plan / feature:** the completing reply MUST be in THIS order — (1) the **full checklist, every item ✓**; (2) **What was done** in plain English; (3) **Where/how to check it**; (4) **Verification done** (build/typecheck/lint/tests, for code work); (5) **What's next** (or "Plan complete."). Full format + example → `multi-agent-coordination.md`.
 
 ## Rule index — read the doc BEFORE the task
 | When you're about to… | Read (`~/.ai-instructions/`) |

@@ -5,6 +5,7 @@ when_to_read: before any git push, merge, update-ref, or rebase
 sections:
   - Pushing to main/master
   - Pushing feature branches
+  - Fetch before starting new work
   - Fetch before merging the base
   - How to apply
   - Hook enforcement
@@ -21,6 +22,10 @@ sections:
 ## Pushing feature branches
 
 **Pushing feature branches**: Pushing feature branches to remote (e.g., `git push -u origin feat/my-feature`) is ALLOWED and ENCOURAGED — it serves as a backup that prevents work loss. Feature branch pushes do NOT require user approval. Hooks will auto-allow pushes to branches starting with `feat/`, `fix/`, `refactor/`, or `chore/`.
+
+## Fetch before starting new work
+
+**Before starting any new piece of work** (a new feature, plan, investigation, or worktree), `git fetch` the base branch (usually `main`) so you begin from the latest. Run `git fetch origin main`, then either fast-forward your local base or branch/worktree directly off `origin/main`. Never plan, branch, or build off a stale base: another agent, CI, the user, or a teammate may have advanced `main` since you last looked, and starting stale causes avoidable merge conflicts and rework. This is the start-of-work counterpart to "fetch before merging the base" below.
 
 ## Fetch before merging the base
 
