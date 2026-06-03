@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<style>
+  :root{
+    --ink:#0a0c11; --ink2:#0d1017;
+    --text:#eef2f7; --dim:#8b96a6; --faint:#5b6473;
+    --amber:#f6a531; --amber2:#ffc46b;
+    --cyan:#63b6c6;
+    --line:rgba(125,145,175,.09);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:1280px;height:640px;overflow:hidden}
+  .card{
+    position:relative;width:1280px;height:640px;
+    background:
+      radial-gradient(900px 520px at 86% 30%, rgba(246,165,49,.16), transparent 60%),
+      radial-gradient(700px 600px at 8% 110%, rgba(99,182,198,.10), transparent 55%),
+      linear-gradient(160deg,#0c0f16 0%, #0a0c11 55%, #080a0e 100%);
+    font-family:"Cascadia Mono","Consolas",monospace;
+    color:var(--text);overflow:hidden;
+  }
+  /* blueprint grid */
+  .card::before{
+    content:"";position:absolute;inset:0;
+    background-image:
+      linear-gradient(var(--line) 1px,transparent 1px),
+      linear-gradient(90deg,var(--line) 1px,transparent 1px);
+    background-size:44px 44px;
+    mask-image:radial-gradient(1100px 700px at 50% 40%,#000 60%,transparent 100%);
+  }
+  /* grain */
+  .card::after{
+    content:"";position:absolute;inset:0;opacity:.05;mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  }
+  .frame{position:absolute;inset:26px;border:1px solid rgba(140,160,190,.14);border-radius:14px;pointer-events:none}
+  .corner{position:absolute;width:14px;height:14px;border:2px solid var(--amber);opacity:.8}
+  .c1{top:20px;left:20px;border-right:0;border-bottom:0}
+  .c2{top:20px;right:20px;border-left:0;border-bottom:0}
+  .c3{bottom:20px;left:20px;border-right:0;border-top:0}
+  .c4{bottom:20px;right:20px;border-left:0;border-top:0}
+
+  .wrap{position:relative;height:100%;display:flex;align-items:center;padding:0 78px;z-index:2}
+  .left{width:62%}
+  .kicker{
+    font-size:16px;letter-spacing:.42em;text-transform:uppercase;color:var(--amber);
+    display:flex;align-items:center;gap:14px;margin-bottom:26px;font-weight:600;
+  }
+  .kicker .dot{width:9px;height:9px;border-radius:50%;background:var(--amber);box-shadow:0 0 14px 2px rgba(246,165,49,.7)}
+  .title{
+    font-family:"Bahnschrift","Segoe UI Variable Display","Arial Narrow",sans-serif;
+    font-stretch:78%;font-weight:700;
+    font-size:118px;line-height:.9;letter-spacing:-.5px;text-transform:uppercase;
+    color:#f4f7fb;
+  }
+  .title .accent{
+    color:transparent;-webkit-text-stroke:2px var(--amber);
+    text-shadow:0 0 38px rgba(246,165,49,.35);
+  }
+  .slug{
+    margin-top:30px;font-size:21px;color:var(--dim);letter-spacing:.01em;
+  }
+  .slug b{color:var(--text);font-weight:600}
+  .tagline{margin-top:14px;font-size:18px;color:var(--faint);max-width:560px;line-height:1.5}
+  .tools{margin-top:40px;display:flex;gap:12px}
+  .pill{
+    font-size:14.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--text);
+    border:1px solid rgba(150,170,200,.22);border-radius:999px;padding:9px 18px;
+    background:rgba(255,255,255,.015);
+  }
+  .pill .b{width:7px;height:7px;border-radius:50%;background:var(--cyan);display:inline-block;margin-right:9px;vertical-align:middle}
+
+  /* routing diagram */
+  .right{width:38%;height:100%;position:relative}
+  .diagram{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)}
+  .legend{
+    position:absolute;right:0;bottom:40px;text-align:right;font-size:12.5px;color:var(--faint);
+    letter-spacing:.18em;text-transform:uppercase;line-height:1.9;z-index:3;
+  }
+  .legend .n{color:var(--amber);font-weight:700}
+
+  .brand{
+    position:absolute;top:50px;right:62px;display:flex;align-items:center;gap:12px;z-index:4;
+    font-size:15px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);font-weight:600;
+  }
+  .brand .by{text-transform:none;letter-spacing:.02em;color:var(--faint);font-weight:500;margin-right:2px}
+  .brand b{color:var(--text);font-weight:700}
+  .brand .ai{color:var(--amber);font-weight:700}
+  .brand .mark{
+    width:24px;height:24px;border-radius:7px;display:grid;place-items:center;
+    background:linear-gradient(135deg,#ffd591,#f6a531 55%,#c97e1e);
+    box-shadow:0 0 18px rgba(246,165,49,.5);
+  }
+  .brand .mark::after{content:"";width:9px;height:9px;border:2.2px solid #1a1206;border-radius:3px}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="frame"></div>
+    <span class="corner c1"></span><span class="corner c2"></span><span class="corner c3"></span><span class="corner c4"></span>
+
+    <div class="brand"><span class="mark"></span><span class="by">by</span> <b>Automate Anything</b>&nbsp;<span class="ai">AI</span></div>
+
+    <div class="wrap">
+      <div class="left">
+        <div class="kicker"><span class="dot"></span>Global · Multi-tool · Versioned</div>
+        <div class="title">Agent<br>Orchestration<br><span class="accent">Config</span></div>
+        <div class="slug"><b>~/.ai-instructions</b> — one router, every agent</div>
+        <div class="tagline">Routers + indexed instruction docs, templates, tools &amp; hooks for Claude Code, Gemini CLI, and Codex — synced across machines.</div>
+        <div class="tools">
+          <span class="pill"><span class="b"></span>Claude Code</span>
+          <span class="pill"><span class="b"></span>Gemini CLI</span>
+          <span class="pill"><span class="b"></span>Codex</span>
+        </div>
+      </div>
+
+      <div class="right">
+        <svg class="diagram" width="430" height="430" viewBox="0 0 430 430" fill="none">
+          <defs>
+            <radialGradient id="hub" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#ffd591"/>
+              <stop offset="55%" stop-color="#f6a531"/>
+              <stop offset="100%" stop-color="#c97e1e"/>
+            </radialGradient>
+            <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+              <feGaussianBlur stdDeviation="9" result="b"/>
+              <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+          <!-- faint rings -->
+          <circle cx="215" cy="215" r="186" stroke="rgba(140,160,190,.16)" stroke-width="1" stroke-dasharray="3 7"/>
+          <circle cx="215" cy="215" r="138" stroke="rgba(140,160,190,.10)" stroke-width="1"/>
+          <!-- spokes + doc nodes (7 docs) -->
+          <g stroke="rgba(246,165,49,.42)" stroke-width="1.4">
+            <line x1="215" y1="215" x2="215" y2="29"/>
+            <line x1="215" y1="215" x2="360" y2="92"/>
+            <line x1="215" y1="215" x2="397" y2="247"/>
+            <line x1="215" y1="215" x2="318" y2="380"/>
+            <line x1="215" y1="215" x2="112" y2="380"/>
+            <line x1="215" y1="215" x2="33"  y2="247"/>
+            <line x1="215" y1="215" x2="70"  y2="92"/>
+          </g>
+          <g fill="#0a0c11" stroke="var(--cyan)" stroke-width="1.6">
+            <circle cx="215" cy="29"  r="9"/>
+            <circle cx="360" cy="92"  r="9"/>
+            <circle cx="397" cy="247" r="9"/>
+            <circle cx="318" cy="380" r="9"/>
+            <circle cx="112" cy="380" r="9"/>
+            <circle cx="33"  cy="247" r="9"/>
+            <circle cx="70"  cy="92"  r="9"/>
+          </g>
+          <!-- central router node -->
+          <circle cx="215" cy="215" r="40" fill="url(#hub)" filter="url(#glow)"/>
+          <circle cx="215" cy="215" r="40" fill="none" stroke="#ffe1ad" stroke-width="1.5" opacity=".7"/>
+          <text x="215" y="211" text-anchor="middle" font-family="Cascadia Mono,Consolas,monospace" font-size="15" font-weight="700" fill="#1a1206" letter-spacing="0.5">router</text>
+          <text x="215" y="228" text-anchor="middle" font-family="Cascadia Mono,Consolas,monospace" font-size="9.5" fill="#3a2a0c" letter-spacing="1.5">CLAUDE·md</text>
+        </svg>
+        <div class="legend"><span class="n">7</span> indexed docs<br>1 router · 3 tools</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
