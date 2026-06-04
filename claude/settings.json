@@ -237,5 +237,5 @@
     }
   },
   "skipDangerousModePermissionPrompt": false,
-  "effortLevel": "xhigh"
+  "effortLevel": "high"
 }
