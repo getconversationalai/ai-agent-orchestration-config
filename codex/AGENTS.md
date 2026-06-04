@@ -16,6 +16,8 @@ This user runs Claude Code, Gemini CLI, and Codex. Each reads its own files; kee
 
 When you edit any of these global files (this router or a `~/.ai-instructions/` doc), ASK whether to mirror the change to the other tools' files. Never assume.
 
+These local files are the source of truth. They are backed up to the private GitHub repo **`getconversationalai/ai-agent-orchestration-config`**, which can go stale until synced. Sync flow: edit the live files → run `capture.ps1` → commit → push.
+
 ## Always-on rules (apply every turn — never skip)
 - **Action Gate:** A question (ends in "?", or "how/what/why/can we/should we…") is NOT permission to act. Answer only; wait for an explicit action verb (do it, build, fix, implement, create).
 - **Todo discipline:** Any actionable multi-step turn → maintain a live TodoWrite list; exactly one item `in_progress`; mark each item `completed` the instant it's done via its OWN TodoWrite call (never batch) so the full list visibly re-renders with the tick; append new asks rather than dropping current work.
@@ -28,6 +30,7 @@ When you edit any of these global files (this router or a `~/.ai-instructions/` 
 - **Git:** Never push to main/master without explicit approval; always `git fetch` the base immediately before any merge/update-ref/push to it. → `git-safety.md`
 - **Database:** SQL writes require a dedicated standalone confirmation message; the live DB is the source of truth, not migration files. → `supabase-operations.md`
 - **Problem-solving:** brainstorm options → try the likeliest → diagnose failures → undo before retrying. Never stack failed attempts. → `code-quality.md`
+- **Diagnose & fix out loud:** Before diagnosing anything, state in chat the steps you'll take to reach a diagnosis, and post each finding in chat as you discover it. Before fixing a bug/issue, write in chat what the bug/issue is and your plan for fixing it; after fixing, state in chat what you fixed and how. → `code-quality.md`
 - **Browser verification:** after a UI/runtime change, end with ONE short offer to verify (Playwright / Lighthouse / heap-diff / network). → `code-quality.md`
 - **Coordination & memory:** read `PROJECT_SCOPE.md` / `MEMORY.md` / `WORKBOARD.md` at start; update `MEMORY.md` + `WORKBOARD.md` after significant work. → `project-setup.md`, `multi-agent-coordination.md`
 - **Finishing a phase / plan / feature:** the completing reply MUST be in THIS order — (1) the **full checklist, every item ✓**; (2) **What was done** in plain English; (3) **Where/how to check it**; (4) **Verification done** (build/typecheck/lint/tests, for code work); (5) **What's next** (or "Plan complete."). Full format + example → `multi-agent-coordination.md`.
