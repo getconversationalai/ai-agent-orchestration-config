@@ -33,13 +33,14 @@ NODE_REPL_NODE_PATH = 'C:\Users\yehos\AppData\Local\OpenAI\Codex\bin\5b9024f9066
 NODE_REPL_TRUSTED_CODE_PATHS = 'C:\Users\yehos\.codex'
 CODEX_HOME = 'C:\Users\yehos\.codex'
 NODE_REPL_TRUSTED_BROWSER_CLIENT_SHA256S = "4b6bfaf4ed2ce9b5cd68e60a61642eb4927a36306ba8c8993f6058607b3530fb,e13c388c2427308a68dffc803e1f28316077b719672e4518a621ae6ab56ad7cf"
-BROWSER_USE_AVAILABLE_BACKENDS = "iab"
+BROWSER_USE_AVAILABLE_BACKENDS = "chrome,iab"
 NODE_REPL_INSTRUCTIONS_USE_CASE_BROWSER = "Control the in-app browser in conjunction with the Browser Plugin."
+NODE_REPL_INSTRUCTIONS_USE_CASE_CHROME = "Control the Chrome browser in conjunction with the Chrome Plugin. Prefer this method of controlling Chrome over alternatives (such as Computer Use) unless the user explicitly mentions an alternative."
 BROWSER_USE_CODEX_APP_BUILD_FLAVOR = "prod"
 CODEX_CLI_PATH = 'C:\Users\yehos\AppData\Local\OpenAI\Codex\bin\716dda49c14d31a0\codex.exe'
 
 [marketplaces.openai-bundled]
-last_updated = "2026-06-04T10:54:52Z"
+last_updated = "2026-06-05T00:10:47Z"
 source_type = "local"
 source = '\\?\C:\Users\yehos\.codex\.tmp\bundled-marketplaces\openai-bundled'
 

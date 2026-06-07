@@ -233,6 +233,18 @@ interface User {
 // Phase 3 — Contract: delete old file
 ```
 
+#### Cross-layer data fields (the silent-fallback trap)
+
+When the thing you're migrating is a **data value written in one layer and read in another** — a JSON `metadata.<key>`, a DB column, an API response field — the contract phase is **NOT proven safe by "a full build passes."** Dynamic reads (`metadata.html_body`, `row['col']`, `resp.field`) don't reference a removed *symbol*; when the field disappears they silently become `undefined` and the reader falls through to a fallback (often a worse one) with zero compile errors. The build is green; users get garbage.
+
+Rules for data-field / storage migrations (e.g. moving a value from `metadata` JSON to a first-class column, or renaming an API field):
+- **Grep every layer, not just the compiler.** Before dropping the old write, search `server/` AND `client/` for the JSON key, the column name, AND any `??`/`||` fallback reading them. `tsc` will not find dynamic key reads for you.
+- **Readers use `newSource ?? oldSource`, and the new source must be declared in the consumer's type.** A column returned by `select('*')` is invisible to the client until the row/`Message` type lists it — an undeclared column reads as `undefined`.
+- **Keep dual-writing the old location until grep shows zero readers remain.** Dropping the old write "to avoid divergence" while any consumer still reads it converts a loud failure into a silent wrong-value bug. The old location is retired only after every reader is migrated.
+- **A regression test asserting the consumer reads the new source (not the fallback) is the durable guard — a build is not.**
+
+Real example (reply-flow, 2026-06-05): email `html_body` was promoted from `metadata.html_body` to a first-class column. The send path dropped the `metadata.html_body` write (Phase 3) while the web client still read `metadata.html_body`, so display silently fell back to the tag-stripped `message_body` and rendered every app-sent email as a garbled `&nbsp;` blob. The build passed the whole time.
+
 **What this replaces:** This rule supersedes the old "create a branch in the main repo" workflow. You no longer work directly in the main working tree for any code changes. The only things you do in the main working tree are:
 - Reading project context files (`PROJECT_SCOPE.md`, `WORKBOARD.md`, `MEMORY.md`, plans)
 - Updating `WORKBOARD.md` entries

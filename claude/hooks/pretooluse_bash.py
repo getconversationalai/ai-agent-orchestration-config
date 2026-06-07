@@ -57,12 +57,12 @@ def main():
     # Verify .git exists before any destructive operation
     if re.search(r"rm\s+.*-[a-zA-Z]*r[a-zA-Z]*", command):
         git_dir = find_git_root()
-        if git_dir and not os.path.isdir(git_dir):
+        if git_dir and not is_healthy_git(git_dir):
             block(
-                f".git directory not found at {git_dir}. The repository may be corrupted. "
-                "STOP and investigate before running any more commands. "
-                "Recovery: git init && git remote add origin <url> && git fetch origin "
-                "&& git checkout -B main origin/main"
+                f".git at {git_dir} is not a valid repo or worktree pointer — possibly "
+                "corrupted. STOP and investigate manually before running destructive "
+                "commands. If this is a worktree, check the .git file still holds its "
+                "'gitdir:' pointer. Do NOT blindly re-init."
             )
 
     # Block 'python ' and 'python3 ' (Windows uses py launcher)
@@ -409,6 +409,20 @@ def check_workboard_active_agents():
                 )
         except Exception:
             pass
+
+
+def is_healthy_git(git_path):
+    """Healthy if .git is a directory (normal checkout) OR a file that is a valid
+    worktree pointer (starts with 'gitdir:'). Anything else is treated as corrupt."""
+    if os.path.isdir(git_path):
+        return True
+    if os.path.isfile(git_path):
+        try:
+            with open(git_path, "r", encoding="utf-8", errors="ignore") as f:
+                return f.read(8).startswith("gitdir:")
+        except OSError:
+            return False
+    return False
 
 
 def find_git_root():

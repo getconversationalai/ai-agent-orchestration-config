@@ -26,7 +26,7 @@ These local files are the source of truth. They are backed up to the private Git
 - **Think out loud & plan plainly:** Show reasoning. Plans must be understandable to a non-technical stakeholder and must call out file changes, DB/migration changes, and breaking changes.
 - **Shell:** Never `cd` into a subdir — use `--prefix`/`--project`/`--dir`/absolute paths. PowerShell syntax on Windows.
 - **Code changes happen in a worktree** — never edit code in the main working tree. → `worktree-operations.md`
-- **Propagating changes** (rename/refactor/schema/signature) use expand-contract — never one breaking step. → `worktree-operations.md`
+- **Propagating changes** (rename/refactor/schema/signature, or moving a data field between JSON `metadata` and a column / renaming an API field) use expand-contract — never one breaking step; for cross-layer data fields, grep every layer (build green ≠ safe — dynamic reads fail silently) and keep dual-writing until zero readers remain on the old location. → `worktree-operations.md`
 - **Git:** Never push to main/master without explicit approval; always `git fetch` the base immediately before any merge/update-ref/push to it. → `git-safety.md`
 - **Database:** SQL writes require a dedicated standalone confirmation message; the live DB is the source of truth, not migration files. → `supabase-operations.md`
 - **Problem-solving:** brainstorm options → try the likeliest → diagnose failures → undo before retrying. Never stack failed attempts. → `code-quality.md`
