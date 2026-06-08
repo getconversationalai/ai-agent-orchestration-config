@@ -5,6 +5,7 @@ when_to_read: before any code change, worktree create/merge/cleanup, or any rena
 sections:
   - Why worktrees
   - Create a worktree
+  - Scratch worktree (quick fixes)
   - Naming convention
   - Work inside the worktree
   - Merge back (two-level hierarchy)
@@ -45,6 +46,23 @@ The main working tree may have uncommitted changes from another agent, another c
   npm --prefix <worktree-path>/client install
   ```
   **Skipping this step will cause hundreds of "Cannot find module" TypeScript errors.**
+
+## Scratch worktree (quick fixes)
+For a quick, single-concern fix (a file or two, finished and merged in one pass), don't pay the full cost of a fresh worktree — `git worktree add` checks out the whole tree, a fresh `node_modules` install takes minutes, and tearing it down afterward is slow on Windows. Instead reuse the **scratch worktree**: one long-lived worktree per repo at `../.worktrees/<project>/_scratch` whose `node_modules` persists between uses. It is never deleted (`worktree_cleanup.py` skips it), so there is no create / install / teardown overhead for the common case.
+
+**When to use it**
+- ✅ Quick single-concern fixes you'll finish and merge in one pass.
+- ❌ NOT feature-sized work, anything long-running, or parallel multi-agent work — those still get a dedicated per-branch worktree. The scratch worktree holds one branch at a time, so it is inherently serial.
+
+**Use it (one command, run from anywhere in the repo):**
+```bash
+py ~/.ai-instructions/tools/scratch_worktree.py fix/<scope>
+# branch off dev instead of main:
+py ~/.ai-instructions/tools/scratch_worktree.py fix/<scope> --base dev
+```
+This fetches `origin/<base>`, resets the scratch tree to a fresh `fix/<scope>` branch off the latest `origin/<base>` (discarding the previous fix's leftovers), then runs `npm install` — **skipped automatically when `package-lock.json` is unchanged**, so repeat resets are near-instant. It prints the scratch path to edit in. The first run creates the worktree (one-time full install).
+
+Then: edit in the scratch worktree → build/verify → commit → push to `main` (or open a PR) → walk away. The next quick fix just re-runs the command with a new branch name. **Never delete the scratch worktree** — recycle it by re-running the command.
 
 ## Naming convention
 - **Main agent branches**: `feat/<scope>`, `fix/<scope>`, `refactor/<scope>`. Name must be specific enough to be globally unique (e.g., `feat/voice-waveform-visualizer` not `feat/ui-update`).

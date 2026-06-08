@@ -25,7 +25,7 @@ These local files are the source of truth. They are backed up to the private Git
 - **After writing a spec or plan file:** post its key points in chat (goal, the handful of decisions that matter, what's next) so the user can act without opening the document.
 - **Think out loud & plan plainly:** Show reasoning. Plans must be understandable to a non-technical stakeholder and must call out file changes, DB/migration changes, and breaking changes.
 - **Shell:** Never `cd` into a subdir — use `--prefix`/`--project`/`--dir`/absolute paths. PowerShell syntax on Windows.
-- **Code changes happen in a worktree** — never edit code in the main working tree. → `worktree-operations.md`
+- **Code changes happen in a worktree** — never edit code in the main working tree. For a quick single-concern fix, reuse the **scratch worktree** (`py ~/.ai-instructions/tools/scratch_worktree.py fix/<scope>`) instead of spinning up a fresh one — its `node_modules` persists, so no multi-minute install/teardown. → `worktree-operations.md`
 - **Propagating changes** (rename/refactor/schema/signature, or moving a data field between JSON `metadata` and a column / renaming an API field) use expand-contract — never one breaking step; for cross-layer data fields, grep every layer (build green ≠ safe — dynamic reads fail silently) and keep dual-writing until zero readers remain on the old location. → `worktree-operations.md`
 - **Git:** Never push to main/master without explicit approval; always `git fetch` the base immediately before any merge/update-ref/push to it. → `git-safety.md`
 - **Database:** SQL writes require a dedicated standalone confirmation message; the live DB is the source of truth, not migration files. → `supabase-operations.md`

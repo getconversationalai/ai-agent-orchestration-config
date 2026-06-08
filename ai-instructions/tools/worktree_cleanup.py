@@ -96,15 +96,8 @@ def dry_run_report(repo_root, args):
         for wt_path, wt_branch in worktrees:
             if not wt_branch or wt_branch in merged:
                 continue
-            try:
-                cnt = subprocess.run(
-                    ["git", "rev-list", "--count", f"{base_branch}..{wt_branch}"],
-                    capture_output=True, text=True, timeout=10, cwd=repo_root,
-                )
-                if cnt.returncode == 0 and cnt.stdout.strip() == "0":
-                    merged.add(wt_branch)
-            except Exception:
-                pass
+            if is_ancestor_only(repo_root, wt_branch):
+                merged.add(wt_branch)
 
         targets = [(p, b) for (p, b) in worktrees if b in merged]
     else:
@@ -128,25 +121,23 @@ def dry_run_report(repo_root, args):
 def _dry_run_gate_check(repo_root, wt_path, wt_branch, base_branch):
     """Replicate the safety gates without side effects. Returns reason string
     if any gate would refuse, None if all pass."""
+    # Gate 0: protected scratch worktree — never cleaned
+    if is_scratch_worktree(wt_path):
+        return "protected scratch worktree"
+
     # Gate 1: WORKBOARD active (JSON source of truth, .md fallback)
     if _workboard_json_blocks(repo_root, wt_path) or _workboard_md_blocks(repo_root, wt_path):
         return "active in WORKBOARD"
 
     # Gate 2: branch pushed to remote (with ancestor-only bypass)
-    if wt_branch:
+    if wt_branch and not is_ancestor_only(repo_root, wt_branch):
         try:
-            cnt = subprocess.run(
-                ["git", "rev-list", "--count", f"{base_branch}..{wt_branch}"],
+            r = subprocess.run(
+                ["git", "branch", "-r", "--list", f"origin/{wt_branch}"],
                 capture_output=True, text=True, timeout=10, cwd=repo_root,
             )
-            if cnt.returncode != 0 or cnt.stdout.strip() != "0":
-                # Not ancestor-only — require it to be on origin
-                r = subprocess.run(
-                    ["git", "branch", "-r", "--list", f"origin/{wt_branch}"],
-                    capture_output=True, text=True, timeout=10, cwd=repo_root,
-                )
-                if not r.stdout.strip():
-                    return "branch not pushed to origin"
+            if not r.stdout.strip():
+                return "branch not pushed to origin"
         except Exception:
             pass
 
@@ -185,20 +176,17 @@ def cleanup_all_merged(repo_root, base_branch, delete_branch):
     for wt_path, wt_branch in worktrees:
         if not wt_branch or wt_branch in merged_branches:
             continue
-        try:
-            count_result = subprocess.run(
-                ["git", "rev-list", "--count", f"{base_branch}..{wt_branch}"],
-                capture_output=True, text=True, timeout=10, cwd=repo_root,
-            )
-            if count_result.returncode == 0 and count_result.stdout.strip() == "0":
-                merged_branches.add(wt_branch)
-        except Exception:
-            # If rev-list fails for one branch, skip it — don't fail the whole sweep
-            pass
+        # is_ancestor_only checks origin/main and origin/dev too, so a branch
+        # merged only to origin (stale local base) is still recognized as safe.
+        if is_ancestor_only(repo_root, wt_branch):
+            merged_branches.add(wt_branch)
 
     git_dir = os.path.join(repo_root, ".git")
     cleaned = 0
     for wt_path, wt_branch in worktrees:
+        if is_scratch_worktree(wt_path):
+            info(f"Skipping protected scratch worktree: {wt_path}")
+            continue
         if wt_branch in merged_branches:
             # ── INTEGRITY CHECK before each removal ──
             if not os.path.exists(git_dir) or not os.path.isdir(git_dir):
@@ -239,6 +227,12 @@ def cleanup_one(repo_root, worktree_path, delete_branch):
     """Safely remove a single worktree."""
     worktree_path = os.path.abspath(worktree_path)
     git_dir = os.path.join(repo_root, ".git")
+
+    # ── Step 0: Never delete the reusable scratch worktree ──
+    if is_scratch_worktree(worktree_path):
+        info("This is the protected reusable scratch worktree — refusing to delete it.")
+        info("Recycle it instead with: py ~/.ai-instructions/tools/scratch_worktree.py <branch>")
+        return
 
     # ── Step 1: Verify .git exists BEFORE we start ──
     if not os.path.exists(git_dir) or not os.path.isdir(git_dir):
@@ -304,25 +298,51 @@ def cleanup_one(repo_root, worktree_path, delete_branch):
     # files in the working tree" — which after those three gates is always one of:
     # npm install noise, build artifacts, or stray editor files. Real in-progress work
     # would have failed gate (a) or (b).
+    # ── Step 9b: Fast-delete heavy gitignored dirs (node_modules, build output) ──
+    # All junctions are gone by now, so rd /s /q is safe and far faster than
+    # letting `git worktree remove` walk a 1,200-package node_modules file by file.
+    fast_delete_heavy_dirs(worktree_path)
+
+    # ── Step 10: Run git worktree remove (timeout-safe) ──
+    # Raised timeout + explicit TimeoutExpired handling. The old 60s limit let a
+    # slow node_modules delete crash the script mid-removal, leaving a half-deleted
+    # dir and a stale worktree registration. Now a timeout falls back to manual
+    # removal instead of throwing.
     info(f"Running git worktree remove --force {worktree_path}...")
-    result = subprocess.run(
-        ["git", "worktree", "remove", "--force", worktree_path],
-        capture_output=True, text=True, timeout=60, cwd=repo_root,
-    )
-    remove_succeeded = (result.returncode == 0)
-    if not remove_succeeded:
-        stderr = result.stderr.strip()
-        # If the directory is already gone or not a worktree, treat as success-by-prune
-        if "is not a working tree" in stderr or "does not exist" in stderr:
-            info(f"git worktree remove reported: {stderr}")
-            info("Running git worktree prune instead...")
-            run_git(["git", "worktree", "prune"], cwd=repo_root)
-            remove_succeeded = True
-        else:
-            warn(f"git worktree remove failed: {stderr}")
-            warn("Junctions were already removed, so .git should be safe.")
-            # Still try to prune in case the ref is dangling
-            run_git(["git", "worktree", "prune"], cwd=repo_root)
+    remove_succeeded = False
+    try:
+        result = subprocess.run(
+            ["git", "worktree", "remove", "--force", worktree_path],
+            capture_output=True, text=True, timeout=300, cwd=repo_root,
+        )
+        remove_succeeded = (result.returncode == 0)
+        if not remove_succeeded:
+            stderr = result.stderr.strip()
+            # If the directory is already gone or not a worktree, treat as success-by-prune
+            if "is not a working tree" in stderr or "does not exist" in stderr:
+                info(f"git worktree remove reported: {stderr}")
+                info("Running git worktree prune instead...")
+                run_git(["git", "worktree", "prune"], cwd=repo_root)
+                remove_succeeded = True
+            else:
+                warn(f"git worktree remove failed: {stderr}")
+                warn("Junctions were already removed, so .git should be safe.")
+                # Still try to prune in case the ref is dangling
+                run_git(["git", "worktree", "prune"], cwd=repo_root)
+    except subprocess.TimeoutExpired:
+        # Don't crash mid-delete. Whatever directory remains is junction-free by
+        # now, so remove it directly and prune the registration.
+        warn("git worktree remove exceeded 300s — falling back to manual removal.")
+        if os.path.isdir(worktree_path):
+            try:
+                subprocess.run(
+                    ["cmd", "/c", "rd", "/s", "/q", to_windows_path(worktree_path)],
+                    capture_output=True, text=True, timeout=240,
+                )
+            except Exception as e:
+                warn(f"Manual removal failed: {e}")
+        run_git(["git", "worktree", "prune"], cwd=repo_root)
+        remove_succeeded = not os.path.isdir(worktree_path)
 
     # ── Step 11: COMPREHENSIVE .git integrity check AFTER removal ──
     verify_git_integrity(git_dir, git_snapshot, worktree_path)
@@ -679,6 +699,76 @@ def delete_junction_safe(junction_path):
 # Helper functions
 # ─────────────────────────────────────────────
 
+# ─────────────────────────────────────────────
+# Scratch worktree protection, ancestor checks, fast delete
+# ─────────────────────────────────────────────
+
+SCRATCH_MARKER = ".scratch-keep"
+
+
+def is_scratch_worktree(worktree_path):
+    """The reusable scratch worktree (scratch_worktree.py) is never deleted.
+    Identified by the `_scratch` directory name OR a `.scratch-keep` marker."""
+    norm = os.path.normpath(worktree_path)
+    if os.path.basename(norm).lower() == "_scratch":
+        return True
+    return os.path.isfile(os.path.join(worktree_path, SCRATCH_MARKER))
+
+
+def is_ancestor_only(repo_root, branch_name):
+    """True if every commit on branch_name is already reachable from a known
+    base. Checks REMOTE-tracking refs first (origin/main, origin/dev) so a
+    stale local main/dev can't produce a false 'has unpushed commits' verdict —
+    the bug that made the script refuse a branch already merged to origin/main."""
+    if not branch_name:
+        return False
+    for base in ("origin/main", "origin/dev", "main", "dev"):
+        try:
+            if subprocess.run(
+                ["git", "rev-parse", "--verify", "--quiet", base],
+                capture_output=True, text=True, timeout=5, cwd=repo_root,
+            ).returncode != 0:
+                continue
+            cnt = subprocess.run(
+                ["git", "rev-list", "--count", f"{base}..{branch_name}"],
+                capture_output=True, text=True, timeout=10, cwd=repo_root,
+            )
+            if cnt.returncode == 0 and cnt.stdout.strip() == "0":
+                return True
+        except Exception:
+            pass
+    return False
+
+
+def fast_delete_heavy_dirs(worktree_path):
+    """Fast-delete large gitignored dirs (node_modules, build output) with
+    `rd /s /q` BEFORE `git worktree remove`, so git has almost nothing left to
+    walk. Safe ONLY after every junction has been removed (callers guarantee
+    this via scan_junctions_python + re-scan). This is the speed fix: git's own
+    per-file removal of a 1,200-package node_modules is what used to blow past
+    the timeout."""
+    heavy = [
+        "node_modules", "dist", "build", ".vite", ".next", ".turbo", "coverage",
+        os.path.join("client", "node_modules"), os.path.join("client", "dist"),
+        os.path.join("server", "node_modules"), os.path.join("server", "dist"),
+        os.path.join("affiliate-portal", "node_modules"),
+    ]
+    for rel in heavy:
+        target = os.path.join(worktree_path, rel)
+        if not os.path.isdir(target):
+            continue
+        win_path = to_windows_path(target)
+        try:
+            subprocess.run(
+                ["cmd", "/c", "rd", "/s", "/q", win_path],
+                capture_output=True, text=True, timeout=240,
+            )
+        except subprocess.TimeoutExpired:
+            warn(f"Fast-delete timed out for {target}; git worktree remove will retry it.")
+        except Exception as e:
+            warn(f"Fast-delete failed for {target}: {e}")
+
+
 def find_repo_root():
     """Find the git repo root from CWD."""
     try:
@@ -850,31 +940,16 @@ def _workboard_md_blocks(repo_root, worktree_path):
 def check_branch_pushed(repo_root, branch_name):
     """Verify branch exists on remote — UNLESS the branch is ancestor-only.
 
-    The check exists to protect unpushed work that could be lost. But if the
-    branch contains zero commits beyond the base branch (every commit on the
-    branch is already reachable from main/dev), there is nothing to lose:
-    every commit is on origin via origin/<base>. In that case we skip the
-    requirement and let the cleanup proceed.
+    The check protects unpushed work that could be lost. But if every commit on
+    the branch is already reachable from a base (origin/main, origin/dev, main,
+    or dev), there is nothing to lose. is_ancestor_only() checks the REMOTE refs
+    first, so a stale local main/dev no longer causes a false refusal of a branch
+    that's already merged to origin/main.
     """
-    # Detect ancestor-only state first. Try main, then dev, as base candidates.
-    for base in ("main", "dev"):
-        try:
-            base_check = subprocess.run(
-                ["git", "rev-parse", "--verify", base],
-                capture_output=True, text=True, timeout=5, cwd=repo_root,
-            )
-            if base_check.returncode != 0:
-                continue
-            count_result = subprocess.run(
-                ["git", "rev-list", "--count", f"{base}..{branch_name}"],
-                capture_output=True, text=True, timeout=10, cwd=repo_root,
-            )
-            if count_result.returncode == 0 and count_result.stdout.strip() == "0":
-                info(f"Branch '{branch_name}' is ancestor-only of {base} "
-                     "(every commit already on origin via origin/" + base + ") — skipping push check.")
-                return
-        except Exception:
-            pass
+    if is_ancestor_only(repo_root, branch_name):
+        info(f"Branch '{branch_name}' is ancestor-only of a known base "
+             "(every commit already on origin) — skipping push check.")
+        return
 
     # Otherwise, require the branch to be on origin.
     try:
