@@ -8,7 +8,7 @@ trust_level = "trusted"
 [projects."\\\\?\\C:\\dev\\reply-flow"]
 trust_level = "trusted"
 
-[projects.'c:\users\yehos']
+[projects."c:\\users\\yehos"]
 trust_level = "trusted"
 
 [notice.model_migrations]
@@ -17,32 +17,32 @@ trust_level = "trusted"
 [windows]
 sandbox = "elevated"
 
-[mcp_servers.pencil]
-command = "C:\\Users\\yehos\\.pencil\\mcp\\cursor\\out\\mcp-server-windows-x64.exe"
-args = [ "--app", "cursor", "--agent", "codexCLI" ]
-
 [mcp_servers.node_repl]
 args = []
-command = 'C:\Users\yehos\AppData\Local\OpenAI\Codex\bin\34ab3e1324cc55b5\node_repl.exe'
+command = "C:\\Users\\yehos\\AppData\\Local\\OpenAI\\Codex\\bin\\34ab3e1324cc55b5\\node_repl.exe"
 startup_timeout_sec = 120
 
 [mcp_servers.node_repl.env]
 NODE_REPL_NATIVE_PIPE_CONNECT_TIMEOUT_MS = "1000"
 NODE_REPL_NODE_MODULE_DIRS = ""
-NODE_REPL_NODE_PATH = 'C:\Users\yehos\AppData\Local\OpenAI\Codex\bin\5b9024f90663758b\node.exe'
-NODE_REPL_TRUSTED_CODE_PATHS = 'C:\Users\yehos\.codex'
-CODEX_HOME = 'C:\Users\yehos\.codex'
+NODE_REPL_NODE_PATH = "C:\\Users\\yehos\\AppData\\Local\\OpenAI\\Codex\\bin\\5b9024f90663758b\\node.exe"
+NODE_REPL_TRUSTED_CODE_PATHS = "C:\\Users\\yehos\\.codex"
+CODEX_HOME = "C:\\Users\\yehos\\.codex"
 NODE_REPL_TRUSTED_BROWSER_CLIENT_SHA256S = "4b6bfaf4ed2ce9b5cd68e60a61642eb4927a36306ba8c8993f6058607b3530fb,e13c388c2427308a68dffc803e1f28316077b719672e4518a621ae6ab56ad7cf"
 BROWSER_USE_AVAILABLE_BACKENDS = "chrome,iab"
 NODE_REPL_INSTRUCTIONS_USE_CASE_BROWSER = "Control the in-app browser in conjunction with the Browser Plugin."
 NODE_REPL_INSTRUCTIONS_USE_CASE_CHROME = "Control the Chrome browser in conjunction with the Chrome Plugin. Prefer this method of controlling Chrome over alternatives (such as Computer Use) unless the user explicitly mentions an alternative."
 BROWSER_USE_CODEX_APP_BUILD_FLAVOR = "prod"
-CODEX_CLI_PATH = 'C:\Users\yehos\AppData\Local\OpenAI\Codex\bin\716dda49c14d31a0\codex.exe'
+CODEX_CLI_PATH = "C:\\Users\\yehos\\AppData\\Local\\OpenAI\\Codex\\bin\\716dda49c14d31a0\\codex.exe"
+
+[mcp_servers.pencil]
+command = "C:\\Users\\yehos\\.pencil\\mcp\\cursor\\out\\mcp-server-windows-x64.exe"
+args = [ "--app", "cursor", "--agent", "codexCLI" ]
 
 [marketplaces.openai-bundled]
 last_updated = "2026-06-05T00:10:47Z"
 source_type = "local"
-source = '\\?\C:\Users\yehos\.codex\.tmp\bundled-marketplaces\openai-bundled'
+source = "\\\\?\\C:\\Users\\yehos\\.codex\\.tmp\\bundled-marketplaces\\openai-bundled"
 
 [plugins."github@openai-curated"]
 enabled = true
