@@ -306,18 +306,21 @@ The sub-agent appears as a nested entry inside the parent's workboard entry — 
 
 The moment you mark a **phase** or a **plan** as done (via `workboard.py done --at "Phase …"` or `workboard.py complete`), you MUST include a plain-English summary in your reply to the user. This is your main signal that real progress happened — don't skip it.
 
-**Lead with the completed checklist — in plain English.** As the very first thing in the completion turn (BEFORE the "What was done" prose), surface the finished work as a checked-off list, every item ticked (✓). **This is NOT a copy of your TodoWrite list.** Your TodoWrite items are technical tasks ("Task 1 — `cloneSequence` service, 3/3 tests"); the completion checklist is a *fresh, rewritten* list where **every item is an outcome the user can now do or see**, in words a non-technical stakeholder understands.
+**The completion summary is FIVE labeled sections, in THIS order, with THESE exact headings** — do not rename, reorder, or merge them:
 
-**Banned from the checklist** — these read as gibberish to a non-technical reader and belong in *Verification done*, not here: commit hashes, file or function names, "Task 1/2/3" labels, test counts, build/typecheck/`tsc`/lint output, and internal process words ("adversarial review", "TDD", "tenant isolation", "endpoint", "404"). **If an item names a file or a hash, you've copied the todo list — rewrite it.** Good item: "You can duplicate a finished campaign and get a complete, working copy." Bad item: "Task 2 — endpoint rewritten to deep-clone, 404 when not owned (`63c287a4`)." The reader should be able to scan the list and know what they can now do, then read the prose below it.
+`List of What Was Done` → `Summary Of What Was Done` → `Where To Check` → `Verification` → `What's Next`
 
-**Update your TodoWrite list live during execution too — not only at completion.** Mark each item `completed` the instant it's done via its OWN TodoWrite call (one status change per call, never batched), so the list visibly re-renders with each tick as work progresses. That live TodoWrite list is your technical working tracker; the completion checklist above is the *plain-English rewrite* of it you present at the end — never the raw list itself.
+**1. List of What Was Done** — a checklist, every item ticked (✓), as the very first thing in the completion turn. **This is NOT a copy of your TodoWrite list.** Your TodoWrite items are technical tasks ("Task 1 — `cloneSequence` service, 3/3 tests"); this list is a *fresh, rewritten* one where **every item is an outcome the user can now do or see**, in words a non-technical stakeholder understands. **Banned here** (these read as gibberish to a non-technical reader — put them under *Verification*, not here): commit hashes, file or function names, "Task 1/2/3" labels, test counts, build/typecheck/`tsc`/lint output, and process jargon ("adversarial review", "TDD", "tenant isolation", "endpoint", "404"). **If an item names a file or a hash, you've copied the todo list — rewrite it.** Good: "✓ You can duplicate a finished campaign and get a complete, working copy." Bad: "✓ Task 2 — endpoint rewritten to deep-clone (`63c287a4`)."
 
-The summary MUST cover four things:
+**2. Summary Of What Was Done** — one short paragraph (or 2-4 bullets) in plain language a non-technical stakeholder could follow. Not a file-by-file diff. Describe what now *works*, or what the user can *do* that they couldn't before.
 
-1. **What was done** — in plain language a non-technical stakeholder could follow. Not a file-by-file diff. Describe what now *works*, or what the user can *do* that they couldn't before. One short paragraph or 2-4 bullets.
-2. **Where/how to check it on the front end (so the user can test it themselves)** — if any part of the change is user-facing, give a short walkthrough the user can follow to confirm it: the exact nav path (page → route → button), what to click or type, and **what they should see if it worked**. Make it a test they can run, not just a location. **Do NOT answer this with a list of source-file paths** (`clone.ts`, `SequenceDetailPage.tsx`, …) — those are where the code lives, not how the user checks it; if you want to cite files, do it as a clearly separate aside, never as the where-to-check itself. Include the local dev URL when you know it (e.g., `http://localhost:5173/settings/agents`). If observing the change requires setting up a scenario first (e.g. drive a send-once campaign until nobody's left so it auto-completes), spell out those setup steps too. If the change is back-end only with no visible UI, say so explicitly — and give the next-best way to confirm it (a specific action whose result is observable, a log line, or a value to check) so the user is never left unable to verify.
-3. **Verification done** — the concrete checks you actually ran, with their results, as *evidence* — not a claim that it "should" work. List what passed: build, typecheck, lint, and tests (with pass counts and a one-line note on what new tests cover). A compact single line is fine, e.g. `Client build + typecheck ✓ · server build + typecheck ✓ · lint clean ✓ · 5/5 new tests pass`. **Run these checks BEFORE writing the summary — never assert success you haven't observed.** If a check was skipped, failed, or couldn't run, say so explicitly rather than implying everything passed; a partial summary with an honest gap beats a clean-looking one that's untrue.
-4. **What's next** — the next pending phase or task from `PROGRESS.json`. If nothing remains, say **"Plan complete."** explicitly. If the next step needs a user action (DB migration to run, env var to set, decision to make), call it out as a checklist the user can tick off.
+**3. Where To Check** — a short bulleted walkthrough the user can follow to test it themselves: the exact nav path (page → click → button), what to enter, and **what they should see if it worked**. A test they can run, not just a location. **Do NOT answer this with a list of source-file paths** (`clone.ts`, `SequenceDetailPage.tsx`, …) — those are where the code lives, not how the user checks it. Include the local dev URL when you know it (e.g., `http://localhost:5173/settings/agents`). If observing the change needs a scenario set up first (e.g. drive a send-once campaign until nobody's left so it auto-completes), spell those steps out. If the change is back-end only with no visible UI, say so explicitly — and give the next-best way to confirm it (an action with an observable result, a log line, or a value to check) so the user is never left unable to verify.
+
+**4. Verification** — the concrete checks you actually ran, with their results, as *evidence* — not a claim that it "should" work. List what passed: build, typecheck, lint, and tests (with pass counts and a one-line note on what new tests cover). A compact single line is fine, e.g. `Client build + typecheck ✓ · server build + typecheck ✓ · lint clean ✓ · 5/5 new tests pass`. **Run these checks BEFORE writing the summary — never assert success you haven't observed.** If a check was skipped, failed, or couldn't run, say so explicitly rather than implying everything passed; a partial summary with an honest gap beats a clean-looking one that's untrue.
+
+**5. What's Next** — the next pending phase or task from `PROGRESS.json`. If nothing remains, say **"Plan complete."** explicitly. If the next step needs a user action (DB migration to run, env var to set, decision to make), call it out as a checklist the user can tick off.
+
+**Keep your TodoWrite list updated live during execution too** — mark each item `completed` the instant it's done via its OWN TodoWrite call (one status change per call, never batched), so the list visibly re-renders with each tick as work progresses. That live TodoWrite list is your technical working tracker; the `List of What Was Done` above is the plain-English rewrite of it you present at the end — never the raw list itself.
 
 **Trigger granularity**: phase completion AND plan completion trigger this summary. Wave and task completions do NOT (they'd flood the chat). If a plan has no phases (flat task list), then only plan completion triggers the summary.
 
@@ -325,40 +328,49 @@ The summary MUST cover four things:
 
 > **Phase 2: Backend API — done.**
 >
-> **Done this phase:**
+> **List of What Was Done**
 > - ✓ Voice messages you record against a contact are saved
 > - ✓ Each recording is turned into text automatically
 > - ✓ You can play the audio back and edit the text
 > - ✓ A failed recording shows an error instead of breaking the page
 >
-> **What was done**: The server now accepts voice recordings, turns them into text automatically, and stores both the audio and the transcript against the contact. Playback and transcript editing work end-to-end against real data.
+> **Summary Of What Was Done**
+> The server now accepts voice recordings, turns them into text automatically, and stores both the audio and the transcript against the contact. Playback and transcript editing work end-to-end against real data.
 >
-> **Where/how to check it**: Open any contact in the inbox (`http://localhost:5173/inbox/<contactId>`) — a new "Voice notes" tab appears next to "Notes". Click the mic button, record a few seconds, and stop. Within ~5 seconds the recording should appear in the list with its transcript beneath it. Click the transcript to edit a word, refresh the page, and confirm your edit stuck.
+> **Where To Check**
+> - Open any contact in the inbox (`http://localhost:5173/inbox/<contactId>`) — a new "Voice notes" tab appears next to "Notes".
+> - Click the mic button, record a few seconds, and stop.
+> - Within ~5 seconds the recording should appear in the list with its transcript beneath it.
+> - Click the transcript to edit a word, refresh the page, and confirm your edit stuck.
 >
-> **Verification done**: Client build + typecheck ✓ · server build + typecheck ✓ · lint clean on authored files ✓ · 5/5 new tests pass (4 service tests covering transcribe / store / playback / error paths, 1 component test proving the tab renders the transcript).
+> **Verification**
+> Client build + typecheck ✓ · server build + typecheck ✓ · lint clean on authored files ✓ · 5/5 new tests pass (4 service tests covering transcribe / store / playback / error paths, 1 component test proving the tab renders the transcript).
 >
-> **What's next**: Phase 3 — Notifications. The unread-count badge in the sidebar should bump when a new voice note arrives in a contact you're subscribed to. First task: `Add voice_note_received event to notificationService`.
+> **What's Next**
+> Phase 3 — Notifications. The unread-count badge in the sidebar should bump when a new voice note arrives in a contact you're subscribed to. First task: `Add voice_note_received event to notificationService`.
 
 **✗ BAD vs ✓ GOOD** — the exact failure mode this rule exists to prevent (don't dump your todo list + source files):
 
-> **✗ BAD checklist** (raw todo list — hashes, file/function names, test counts, build output):
+> **✗ BAD — List of What Was Done** (raw todo list — hashes, file/function names, test counts, build output):
 > - ✓ Task 1 — `cloneSequence` service, TDD, 3/3 tests (`692e953d`)
 > - ✓ Task 2 — endpoint rewritten to deep-clone, 404 when not owned (`63c287a4`)
 > - ✓ Verification — server `tsc` exit 0, `build:client` exit 0
 >
-> **✗ BAD where-to-check** (source-file paths, not a test the user can run):
+> **✗ BAD — Where To Check** (source-file paths, not a test the user can run):
 > Service: `clone.ts` · endpoint: `sequences.ts` · button: `SequenceDetailPage.tsx`
 >
-> **✓ GOOD checklist** (outcomes a non-technical reader understands):
+> **✓ GOOD — List of What Was Done** (outcomes a non-technical reader understands):
 > - ✓ You can duplicate a finished campaign and get a complete, working copy
 > - ✓ The copy brings everything across — emails, A/B variants, attachments, automations
 > - ✓ The copy opens as a fresh draft with nobody enrolled
 > - ✓ There's a Duplicate button in the campaign header
 >
-> **✓ GOOD where-to-check** (an in-app test):
-> Go to **Sequences** → open a **Completed** campaign → click **Duplicate** in the header. You should land on a new **"Copy of…"** draft showing **0 recipients**, with the same emails, variants, and attachments. Reopen the original and confirm it's unchanged.
+> **✓ GOOD — Where To Check** (an in-app test):
+> - Go to **Sequences** → open a **Completed** campaign → click **Duplicate** in the header.
+> - You should land on a new **"Copy of…"** draft showing **0 recipients**, with the same emails, variants, and attachments.
+> - Reopen the original and confirm it's unchanged.
 >
-> The test counts and `tsc`/build results from the BAD checklist still get reported — in the **Verification done** line, where they belong.
+> The test counts and `tsc`/build results from the BAD list still get reported — under **Verification**, where they belong.
 
 ## Parallel-agent specifics
 
