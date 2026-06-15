@@ -84,11 +84,16 @@ def main():
     # Allow cd in && chains (common pattern: cd dir && command) since the
     # persistent CWD change is intentional in those cases, but warn on
     # standalone cd which silently drifts CWD for all future commands.
+    #
+    # EXEMPTION: a `cd <dir>; <read>; <read>` chain composed only of read-only
+    # commands (grep/cat/ls/find/git status/etc.) never prompts — per the user's
+    # standing rule that information-gathering must never ask for permission.
     if re.match(r"^cd\s+(?!/dev/null)", command) and "&&" not in command:
-        ask(
-            "'cd' changes the persistent working directory and can break hooks/paths in future commands. "
-            "Use git -C, npx --project, npm --prefix, or absolute paths instead."
-        )
+        if not _is_readonly_after_cd(command):
+            ask(
+                "'cd' changes the persistent working directory and can break hooks/paths in future commands. "
+                "Use git -C, npx --project, npm --prefix, or absolute paths instead."
+            )
 
     # --- Git merge checks (most specific first) ---
     if re.search(r"git\s+.*merge\b", command):
@@ -599,6 +604,79 @@ def check_npm_install_in_subpkg(command):
             "Or to install all workspace deps:\n"
             "    npm install   (from the repo root)"
         )
+
+
+# Read-only command leaders. A `cd <dir>; <read>; <read>` chain made up only
+# of these is safe to run without the cd-drift confirmation.
+_READONLY_LEADERS = {
+    "grep", "egrep", "fgrep", "rg", "ag", "cat", "head", "tail", "ls", "ll",
+    "echo", "printf", "find", "wc", "sort", "uniq", "cut", "tr", "pwd", "tree",
+    "stat", "file", "dirname", "basename", "which", "type", "column", "nl",
+    "tac", "pg_dump", "jq", "true", "test", "realpath", "readlink",
+}
+# git subcommands that only read.
+_READONLY_GIT_SUBCMDS = {
+    "status", "log", "diff", "show", "branch", "ls-files", "ls-tree",
+    "rev-parse", "blame", "describe", "cat-file", "shortlog", "reflog",
+    "show-ref", "for-each-ref", "rev-list", "name-rev", "whatchanged",
+    "remote", "config", "tag", "stash",  # read-only forms only; see below
+}
+
+
+def _segment_is_readonly(seg):
+    """True if a single shell segment only reads (no file writes, no mutations)."""
+    seg = seg.strip()
+    if not seg:
+        return True  # empty (e.g. trailing ';') is harmless
+    # Any output redirection writes a file — not read-only.
+    if ">" in seg:
+        return False
+    tokens = seg.split()
+    if not tokens:
+        return True
+    leader = tokens[0]
+    if leader == "git":
+        # Skip leading flags and `-C <path>` to find the subcommand.
+        i = 1
+        while i < len(tokens):
+            t = tokens[i]
+            if t == "-C" and i + 1 < len(tokens):
+                i += 2
+                continue
+            if t.startswith("-"):
+                i += 1
+                continue
+            break
+        sub = tokens[i] if i < len(tokens) else ""
+        if sub not in _READONLY_GIT_SUBCMDS:
+            return False
+        # Reject mutating forms of otherwise-read subcommands.
+        rest = tokens[i + 1:]
+        if sub == "remote" and any(a in rest for a in ("add", "remove", "rm", "set-url", "rename", "prune")):
+            return False
+        if sub == "config" and not any(a in rest for a in ("--get", "--get-all", "--list", "-l", "--get-regexp")):
+            return False
+        if sub == "tag" and any(not a.startswith("-") for a in rest):
+            return False  # `git tag <name>` creates; `git tag -l`/`git tag` lists
+        if sub == "stash" and any(a in rest for a in ("drop", "clear", "pop", "apply", "push", "save", "store")):
+            return False
+        return True
+    if leader == "sed":
+        return "-i" not in tokens  # `sed -i` edits in place
+    return leader in _READONLY_LEADERS
+
+
+def _is_readonly_after_cd(command):
+    """True if `command` is `cd <dir>` followed by one or more read-only
+    commands (chained with ; && || |) and nothing that writes. Lets pure
+    information-gathering run without the cd-drift confirmation prompt."""
+    segments = re.split(r"\s*(?:&&|\|\||;|\|)\s*", command)
+    if not segments or not re.match(r"^cd\s+", segments[0].strip()):
+        return False
+    rest = [s for s in segments[1:] if s.strip()]
+    if not rest:
+        return False  # bare `cd` with nothing after still warns (CWD drift)
+    return all(_segment_is_readonly(s) for s in rest)
 
 
 def block(reason):
