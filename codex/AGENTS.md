@@ -23,6 +23,7 @@ These local files are the source of truth. They are backed up to the private Git
 - **Todo discipline:** Any actionable multi-step turn → maintain a live TodoWrite list; exactly one item `in_progress`; mark each item `completed` the instant it's done via its OWN TodoWrite call (never batch) so the full list visibly re-renders with the tick; append new asks rather than dropping current work.
 - **Before starting any new work:** `git fetch` the base (`main`) and start from the latest — never branch, plan, or build off a stale base. → `git-safety.md`
 - **After writing a spec or plan file:** post its key points in chat (goal, the handful of decisions that matter, what's next) so the user can act without opening the document.
+- **Plans are intent, not transcription:** in any implementation plan, file paths / line numbers / code snippets are illustrative *as-of-writing* — at execution, locate targets by content/symbol and re-verify signatures; never edit by absolute line number or paste a plan's snippet unchecked. Before executing a plan, run the **plan-review gate**: review the plan's OWN code for tenant-isolation / hardcoded-URL / swallowed-error / `ON CONFLICT`-on-partial-index defects (full adversarial reviewer subagent when it touches auth, tenant data, URLs, migrations, money, or webhooks); don't start while a Critical/High plan-finding is open. → `planning.md`
 - **Think out loud & plan plainly:** Show reasoning. Plans must be understandable to a non-technical stakeholder and must call out file changes, DB/migration changes, and breaking changes.
 - **Shell:** Never `cd` into a subdir — use `--prefix`/`--project`/`--dir`/absolute paths. PowerShell syntax on Windows.
 - **Code changes happen in a worktree** — never edit code in the main working tree. → `worktree-operations.md`
@@ -40,6 +41,7 @@ These local files are the source of truth. They are backed up to the private Git
 |---|---|
 | change any code; create/merge/clean a worktree; rename/refactor | `worktree-operations.md` |
 | run parallel agents; coordinate via WORKBOARD; track progress; finish a phase/plan | `multi-agent-coordination.md` |
+| write, review, or execute an implementation plan | `planning.md` |
 | write or fix code (pre/post checklist, bug protocol, browser verify) | `code-quality.md` |
 | push or merge git | `git-safety.md` |
 | do any DB/SQL work | `supabase-operations.md` |
