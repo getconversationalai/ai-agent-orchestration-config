@@ -306,14 +306,14 @@ The sub-agent appears as a nested entry inside the parent's workboard entry — 
 
 The moment you mark a **phase** or a **plan** as done (via `workboard.py done --at "Phase …"` or `workboard.py complete`), you MUST include a plain-English summary in your reply to the user. This is your main signal that real progress happened — don't skip it.
 
-**Lead with the completed checklist.** Immediately BEFORE the plain-English "What was done" — i.e. as the first thing in the completion turn — surface the finished work as a checked-off list, with every item the phase/plan covered ticked (✓). This is the final TodoWrite list in its completed state (every item `completed`), so the user sees the full scope ticked through at a glance before reading the prose. Only then write the four-part summary below it.
+**Lead with the completed checklist — in plain English.** Immediately BEFORE the plain-English "What was done" — i.e. as the first thing in the completion turn — surface the finished work as a checked-off list, every item ticked (✓). **Phrase each item the way a non-technical stakeholder would understand it — as an outcome they now have, not the technical task you performed.** It mirrors the final TodoWrite list in its completed state, but rewrite any technical item names into plain language (e.g. not "Add `voice_note_received` event to notificationService" but "The sidebar unread badge now updates when a voice note arrives"). The reader should be able to scan it and know what they can now do, then read the prose below it.
 
 **Update the checklist live during execution too — not only at completion.** Mark each item `completed` the instant it's done via its OWN TodoWrite call (one status change per call, never batched), so the list visibly re-renders with each tick as work progresses. The completion checklist above is simply that same list in its final all-✓ state.
 
 The summary MUST cover four things:
 
 1. **What was done** — in plain language a non-technical stakeholder could follow. Not a file-by-file diff. Describe what now *works*, or what the user can *do* that they couldn't before. One short paragraph or 2-4 bullets.
-2. **Where to check it (if front-end)** — if any part of the change is user-facing, tell the user exactly where to look: which page / route / nav path / component. Include the local dev URL when you know it (e.g., `http://localhost:5173/settings/agents`). If the change is back-end only (no UI), say so explicitly so the user doesn't go hunting.
+2. **Where/how to check it on the front end (so the user can test it themselves)** — if any part of the change is user-facing, give a short walkthrough the user can follow to confirm it: the exact nav path (page → route → button), what to click or type, and **what they should see if it worked**. Make it a test they can run, not just a location. Include the local dev URL when you know it (e.g., `http://localhost:5173/settings/agents`). If observing the change requires setting up a scenario first (e.g. drive a send-once campaign until nobody's left so it auto-completes), spell out those setup steps too. If the change is back-end only with no visible UI, say so explicitly — and give the next-best way to confirm it (a specific action whose result is observable, a log line, or a value to check) so the user is never left unable to verify.
 3. **Verification done** — the concrete checks you actually ran, with their results, as *evidence* — not a claim that it "should" work. List what passed: build, typecheck, lint, and tests (with pass counts and a one-line note on what new tests cover). A compact single line is fine, e.g. `Client build + typecheck ✓ · server build + typecheck ✓ · lint clean ✓ · 5/5 new tests pass`. **Run these checks BEFORE writing the summary — never assert success you haven't observed.** If a check was skipped, failed, or couldn't run, say so explicitly rather than implying everything passed; a partial summary with an honest gap beats a clean-looking one that's untrue.
 4. **What's next** — the next pending phase or task from `PROGRESS.json`. If nothing remains, say **"Plan complete."** explicitly. If the next step needs a user action (DB migration to run, env var to set, decision to make), call it out as a checklist the user can tick off.
 
@@ -323,9 +323,15 @@ The summary MUST cover four things:
 
 > **Phase 2: Backend API — done.**
 >
-> **What was done**: The server now accepts voice recordings, transcribes them via OpenAI Whisper, and stores both the audio and the transcript against the contact. Playback and transcript editing work end-to-end against real data.
+> **Done this phase:**
+> - ✓ Voice messages you record against a contact are saved
+> - ✓ Each recording is turned into text automatically
+> - ✓ You can play the audio back and edit the text
+> - ✓ A failed recording shows an error instead of breaking the page
 >
-> **Where to check**: Open a contact in the inbox — the new "Voice notes" tab appears next to "Notes". Record a message with the mic button at `http://localhost:5173/inbox/<contactId>` and it should appear in the list within ~5 seconds of stopping.
+> **What was done**: The server now accepts voice recordings, turns them into text automatically, and stores both the audio and the transcript against the contact. Playback and transcript editing work end-to-end against real data.
+>
+> **Where/how to check it**: Open any contact in the inbox (`http://localhost:5173/inbox/<contactId>`) — a new "Voice notes" tab appears next to "Notes". Click the mic button, record a few seconds, and stop. Within ~5 seconds the recording should appear in the list with its transcript beneath it. Click the transcript to edit a word, refresh the page, and confirm your edit stuck.
 >
 > **Verification done**: Client build + typecheck ✓ · server build + typecheck ✓ · lint clean on authored files ✓ · 5/5 new tests pass (4 service tests covering transcribe / store / playback / error paths, 1 component test proving the tab renders the transcript).
 >

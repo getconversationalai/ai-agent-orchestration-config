@@ -237,6 +237,7 @@
     }
   },
   "skipDangerousModePermissionPrompt": false,
-  "effortLevel": "xhigh",
-  "skipWorkflowUsageWarning": true
+  "skipWorkflowUsageWarning": true,
+  "fastMode": true,
+  "effortLevel": "xhigh"
 }
