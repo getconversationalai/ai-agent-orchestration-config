@@ -1,6 +1,6 @@
 ---
 name: code-quality
-description: Pre/post-code checklist, bug-fix protocol, problem-solving approach, browser verification
+description: Pre/post-code checklist, bug-fix protocol (incl. regression tests), test discipline, problem-solving approach, browser verification
 when_to_read: before AND after writing or fixing any code
 sections:
   - Pre-Code Checklist
@@ -53,8 +53,9 @@ When fixing a bug, follow this process — do NOT skip straight to writing code:
 
 ### After Fixing
 1. **State what changed and why** — Explain the specific code change and how it addresses the root cause.
-2. **Describe how to verify** — Tell the user exactly how to confirm the fix works (steps to reproduce, what to check).
-3. **Never mark a bug fix done** without stating the root cause and the verification method.
+2. **Lock the fix with a regression test** — Where reasonably possible, add or extend an automated test that **fails before your fix and passes after**, so this exact bug cannot silently return. Confirm it both ways (it should fail on the old code, pass on the new). If a test is genuinely impractical (pure third-party integration, visual-only behavior), say so explicitly rather than skipping in silence.
+3. **Describe how to verify** — Tell the user exactly how to confirm the fix works (steps to reproduce, what to check).
+4. **Never mark a bug fix done** without stating the root cause, the verification method, and either the regression test you added or why one wasn't feasible.
 
 ---
 
@@ -94,10 +95,12 @@ After finishing ANY task or feature, verify the work before considering it done:
 - Confirm every task is done
 - If you deviated from the plan, explain why and what changed
 
-### 4. Integration Check
+### 4. Tests & Integration Check
 - Verify the new code doesn't break existing functionality
 - Check that imports, exports, and cross-module references are correct
-- Run tests if they exist for the affected area
+- **Run the existing tests** for the affected area — all must pass before the work is done
+- **Add a test for new behavior** where reasonably possible, matched to the right *level*: a **unit/integration test** for logic; if the change touches **multi-tenant data, a privileged/`SECURITY DEFINER` function, an access/RLS policy, or a webhook**, also add an **isolation/auth test** asserting another tenant (or an unsigned caller) is *blocked*; reserve slow **end-to-end** tests for a few critical user-facing flows. If a test is genuinely impractical, say why instead of skipping silently.
+- **A failing test is an alarm, not a chore.** If a test fails because you *accidentally* broke something, fix the **code** — never edit the test to make it pass. Change a test only when the *intended* behavior deliberately changed, and say so out loud when you do.
 
 ### 5. Security Review
 Check the code you wrote for these issues:

@@ -42,7 +42,7 @@ These local files are the source of truth. They are backed up to the private Git
 | change any code; create/merge/clean a worktree; rename/refactor | `worktree-operations.md` |
 | run parallel agents; coordinate via WORKBOARD; track progress; finish a phase/plan | `multi-agent-coordination.md` |
 | write, review, or execute an implementation plan | `planning.md` |
-| write or fix code (pre/post checklist, bug protocol, browser verify) | `code-quality.md` |
+| write or fix code (pre/post checklist, bug protocol, tests/regression tests, browser verify) | `code-quality.md` |
 | push or merge git | `git-safety.md` |
 | do any DB/SQL work | `supabase-operations.md` |
 | start, bootstrap, or onboard a project | `project-setup.md` |
