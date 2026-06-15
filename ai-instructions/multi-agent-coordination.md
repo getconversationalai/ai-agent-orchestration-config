@@ -306,14 +306,16 @@ The sub-agent appears as a nested entry inside the parent's workboard entry — 
 
 The moment you mark a **phase** or a **plan** as done (via `workboard.py done --at "Phase …"` or `workboard.py complete`), you MUST include a plain-English summary in your reply to the user. This is your main signal that real progress happened — don't skip it.
 
-**Lead with the completed checklist — in plain English.** Immediately BEFORE the plain-English "What was done" — i.e. as the first thing in the completion turn — surface the finished work as a checked-off list, every item ticked (✓). **Phrase each item the way a non-technical stakeholder would understand it — as an outcome they now have, not the technical task you performed.** It mirrors the final TodoWrite list in its completed state, but rewrite any technical item names into plain language (e.g. not "Add `voice_note_received` event to notificationService" but "The sidebar unread badge now updates when a voice note arrives"). The reader should be able to scan it and know what they can now do, then read the prose below it.
+**Lead with the completed checklist — in plain English.** As the very first thing in the completion turn (BEFORE the "What was done" prose), surface the finished work as a checked-off list, every item ticked (✓). **This is NOT a copy of your TodoWrite list.** Your TodoWrite items are technical tasks ("Task 1 — `cloneSequence` service, 3/3 tests"); the completion checklist is a *fresh, rewritten* list where **every item is an outcome the user can now do or see**, in words a non-technical stakeholder understands.
 
-**Update the checklist live during execution too — not only at completion.** Mark each item `completed` the instant it's done via its OWN TodoWrite call (one status change per call, never batched), so the list visibly re-renders with each tick as work progresses. The completion checklist above is simply that same list in its final all-✓ state.
+**Banned from the checklist** — these read as gibberish to a non-technical reader and belong in *Verification done*, not here: commit hashes, file or function names, "Task 1/2/3" labels, test counts, build/typecheck/`tsc`/lint output, and internal process words ("adversarial review", "TDD", "tenant isolation", "endpoint", "404"). **If an item names a file or a hash, you've copied the todo list — rewrite it.** Good item: "You can duplicate a finished campaign and get a complete, working copy." Bad item: "Task 2 — endpoint rewritten to deep-clone, 404 when not owned (`63c287a4`)." The reader should be able to scan the list and know what they can now do, then read the prose below it.
+
+**Update your TodoWrite list live during execution too — not only at completion.** Mark each item `completed` the instant it's done via its OWN TodoWrite call (one status change per call, never batched), so the list visibly re-renders with each tick as work progresses. That live TodoWrite list is your technical working tracker; the completion checklist above is the *plain-English rewrite* of it you present at the end — never the raw list itself.
 
 The summary MUST cover four things:
 
 1. **What was done** — in plain language a non-technical stakeholder could follow. Not a file-by-file diff. Describe what now *works*, or what the user can *do* that they couldn't before. One short paragraph or 2-4 bullets.
-2. **Where/how to check it on the front end (so the user can test it themselves)** — if any part of the change is user-facing, give a short walkthrough the user can follow to confirm it: the exact nav path (page → route → button), what to click or type, and **what they should see if it worked**. Make it a test they can run, not just a location. Include the local dev URL when you know it (e.g., `http://localhost:5173/settings/agents`). If observing the change requires setting up a scenario first (e.g. drive a send-once campaign until nobody's left so it auto-completes), spell out those setup steps too. If the change is back-end only with no visible UI, say so explicitly — and give the next-best way to confirm it (a specific action whose result is observable, a log line, or a value to check) so the user is never left unable to verify.
+2. **Where/how to check it on the front end (so the user can test it themselves)** — if any part of the change is user-facing, give a short walkthrough the user can follow to confirm it: the exact nav path (page → route → button), what to click or type, and **what they should see if it worked**. Make it a test they can run, not just a location. **Do NOT answer this with a list of source-file paths** (`clone.ts`, `SequenceDetailPage.tsx`, …) — those are where the code lives, not how the user checks it; if you want to cite files, do it as a clearly separate aside, never as the where-to-check itself. Include the local dev URL when you know it (e.g., `http://localhost:5173/settings/agents`). If observing the change requires setting up a scenario first (e.g. drive a send-once campaign until nobody's left so it auto-completes), spell out those setup steps too. If the change is back-end only with no visible UI, say so explicitly — and give the next-best way to confirm it (a specific action whose result is observable, a log line, or a value to check) so the user is never left unable to verify.
 3. **Verification done** — the concrete checks you actually ran, with their results, as *evidence* — not a claim that it "should" work. List what passed: build, typecheck, lint, and tests (with pass counts and a one-line note on what new tests cover). A compact single line is fine, e.g. `Client build + typecheck ✓ · server build + typecheck ✓ · lint clean ✓ · 5/5 new tests pass`. **Run these checks BEFORE writing the summary — never assert success you haven't observed.** If a check was skipped, failed, or couldn't run, say so explicitly rather than implying everything passed; a partial summary with an honest gap beats a clean-looking one that's untrue.
 4. **What's next** — the next pending phase or task from `PROGRESS.json`. If nothing remains, say **"Plan complete."** explicitly. If the next step needs a user action (DB migration to run, env var to set, decision to make), call it out as a checklist the user can tick off.
 
@@ -336,6 +338,27 @@ The summary MUST cover four things:
 > **Verification done**: Client build + typecheck ✓ · server build + typecheck ✓ · lint clean on authored files ✓ · 5/5 new tests pass (4 service tests covering transcribe / store / playback / error paths, 1 component test proving the tab renders the transcript).
 >
 > **What's next**: Phase 3 — Notifications. The unread-count badge in the sidebar should bump when a new voice note arrives in a contact you're subscribed to. First task: `Add voice_note_received event to notificationService`.
+
+**✗ BAD vs ✓ GOOD** — the exact failure mode this rule exists to prevent (don't dump your todo list + source files):
+
+> **✗ BAD checklist** (raw todo list — hashes, file/function names, test counts, build output):
+> - ✓ Task 1 — `cloneSequence` service, TDD, 3/3 tests (`692e953d`)
+> - ✓ Task 2 — endpoint rewritten to deep-clone, 404 when not owned (`63c287a4`)
+> - ✓ Verification — server `tsc` exit 0, `build:client` exit 0
+>
+> **✗ BAD where-to-check** (source-file paths, not a test the user can run):
+> Service: `clone.ts` · endpoint: `sequences.ts` · button: `SequenceDetailPage.tsx`
+>
+> **✓ GOOD checklist** (outcomes a non-technical reader understands):
+> - ✓ You can duplicate a finished campaign and get a complete, working copy
+> - ✓ The copy brings everything across — emails, A/B variants, attachments, automations
+> - ✓ The copy opens as a fresh draft with nobody enrolled
+> - ✓ There's a Duplicate button in the campaign header
+>
+> **✓ GOOD where-to-check** (an in-app test):
+> Go to **Sequences** → open a **Completed** campaign → click **Duplicate** in the header. You should land on a new **"Copy of…"** draft showing **0 recipients**, with the same emails, variants, and attachments. Reopen the original and confirm it's unchanged.
+>
+> The test counts and `tsc`/build results from the BAD checklist still get reported — in the **Verification done** line, where they belong.
 
 ## Parallel-agent specifics
 
