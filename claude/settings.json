@@ -244,5 +244,5 @@
   "skipWorkflowUsageWarning": true,
   "fastMode": true,
   "effortLevel": "medium",
-  "cleanupPeriodDays": 3650
+  "cleanupPeriodDays": 365
 }

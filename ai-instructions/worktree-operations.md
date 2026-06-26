@@ -48,7 +48,7 @@ The main working tree may have uncommitted changes from another agent, another c
   **Skipping this step will cause hundreds of "Cannot find module" TypeScript errors.**
 
 ## Scratch worktree (quick fixes)
-For a quick, single-concern fix (a file or two, finished and merged in one pass), don't pay the full cost of a fresh worktree — `git worktree add` checks out the whole tree, a fresh `node_modules` install takes minutes, and tearing it down afterward is slow on Windows. Instead reuse the **scratch worktree**: one long-lived worktree per repo at `../.worktrees/<project>/_scratch` whose `node_modules` persists between uses. It is never deleted (`worktree_cleanup.py` skips it), so there is no create / install / teardown overhead for the common case.
+**Default to the scratch worktree for any single-concern task** (not just tiny fixes) — reserve a fresh per-branch worktree for genuinely long-running or parallel multi-agent work. For single-concern work, don't pay the full cost of a fresh worktree — `git worktree add` checks out the whole tree, a fresh `node_modules` install takes minutes, and tearing it down afterward is slow on Windows. Instead reuse the **scratch worktree**: one long-lived worktree per repo at `../.worktrees/<project>/_scratch` whose `node_modules` persists between uses. It is never deleted (`worktree_cleanup.py` skips it), so there is no create / install / teardown overhead for the common case.
 
 **When to use it**
 - ✅ Quick single-concern fixes you'll finish and merge in one pass.
