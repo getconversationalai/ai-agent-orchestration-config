@@ -133,6 +133,10 @@
           {
             "type": "command",
             "command": "py ~/.claude/hooks/sessionstart_drift_check.py"
+          },
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/sessionstart_resource_check.sh"
           }
         ]
       }
@@ -239,5 +243,6 @@
   "skipDangerousModePermissionPrompt": false,
   "skipWorkflowUsageWarning": true,
   "fastMode": true,
-  "effortLevel": "xhigh"
+  "effortLevel": "medium",
+  "cleanupPeriodDays": 3650
 }
