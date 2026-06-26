@@ -210,7 +210,7 @@
     "github@claude-plugins-official": true,
     "feature-dev@claude-plugins-official": true,
     "code-simplifier@claude-plugins-official": true,
-    "playwright@claude-plugins-official": true,
+    "playwright@claude-plugins-official": false,
     "typescript-lsp@claude-plugins-official": true,
     "commit-commands@claude-plugins-official": true,
     "security-guidance@claude-plugins-official": true,
@@ -229,7 +229,7 @@
     "mcp-server-dev@claude-plugins-official": true,
     "cloudflare@claude-plugins-official": true,
     "brightdata-plugin@claude-plugins-official": true,
-    "chrome-devtools-mcp@chrome-devtools-plugins": true,
+    "chrome-devtools-mcp@chrome-devtools-plugins": false,
     "resend@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {

@@ -28,8 +28,12 @@ log="$HOME/dev-hygiene.log"
       done )
   done
 
-  echo "  -- orphan node/claude processes (report only, not auto-killed) --"
-  MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' tasklist /fi "imagename eq node.exe" /fo csv /nh 2>/dev/null | tr -d '\r' | grep -c node | sed 's/^/  live node procs: /'
+  echo "  -- sweeping orphaned browser-MCP processes (stateless; re-spawn on demand) --"
+  MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' wmic process where "name='node.exe'" get ProcessId,CommandLine /format:csv 2>/dev/null | tr -d '\r' \
+    | awk -F',' 'NF>=3 && $NF ~ /^[0-9]+$/ { if ($0 ~ /chrome-devtools-mcp/ || $0 ~ /@playwright\/mcp/ || $0 ~ /playwright.*mcp/) print $NF }' \
+    | while read pid; do MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' taskkill /PID "$pid" /T /F >/dev/null 2>&1; done
+  MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' taskkill /IM chrome-headless-shell.exe /F >/dev/null 2>&1
+  echo "  live node procs now: $(MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' tasklist /fi \"imagename eq node.exe\" /fo csv /nh 2>/dev/null | tr -d '\r' | grep -c node)"
 
   free=$(MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' wmic logicaldisk where "DeviceID='C:'" get FreeSpace /value 2>/dev/null | tr -d '\r' | grep -o '[0-9][0-9]*' | head -1)
   awk "BEGIN{printf \"  C: %.1f GB free\n\", ${free:-0}/1073741824}"
