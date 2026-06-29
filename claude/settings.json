@@ -50,7 +50,7 @@
       "Bash(supabase db *)",
       "Bash(npx supabase db *)"
     ],
-    "defaultMode": "acceptEdits"
+    "defaultMode": "bypassPermissions"
   },
   "hooks": {
     "PreToolUse": [
@@ -250,6 +250,7 @@
   "skipDangerousModePermissionPrompt": false,
   "skipWorkflowUsageWarning": true,
   "fastMode": true,
-  "effortLevel": "medium",
-  "cleanupPeriodDays": 365
+  "effortLevel": "high",
+  "cleanupPeriodDays": 365,
+  "model": "sonnet"
 }

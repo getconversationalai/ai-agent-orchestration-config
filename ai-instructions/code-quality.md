@@ -35,6 +35,11 @@ Before writing ANY new code, complete the following checks:
 - If schema changes are needed, create proper migrations — never modify the DB directly
 - A global hook will ask for confirmation if schema is stale when executing migrations, but you must ALSO refresh schema **before writing migration code** — the hook only catches execution, not authoring
 
+#### Loud-guard mandate (DB/Supabase reads)
+**Never `if (!data) return/throw` on a DB/Supabase call without inspecting `error`.** PostgREST and the Supabase client do NOT throw on a bad query — a wrong/renamed column, a column selected from the wrong table after a refactor, or a broken relationship returns `{ data: null, error }`. If you branch on `!data` alone, the failure is otherwise invisible: no throw, no log, no alert — the code path just silently no-ops. This has caused two platform-wide outages in reply-flow (AI replies silently disabled for 43h the second time). For every DB call: destructure `error`, and when it's present surface it loudly (`console.error` + an alert/throw) BEFORE returning. A bare early-return on missing data is a latent silent outage.
+- **Mocked-DB unit tests will NOT catch this** — they return whatever the mock is told to return, never the real PostgREST error shape.
+- **The build (tsc) will NOT catch this** — TypeScript cannot see the live DB schema; a moved/renamed column is well-typed but wrong at runtime.
+
 ### 4. Check API Contracts (if applicable)
 - Review existing API routes and endpoints before creating new ones
 - Check existing query hooks — reuse before creating duplicates
@@ -83,6 +88,8 @@ After finishing ANY task or feature, verify the work before considering it done:
 - If UI: describe what to check visually or run the dev server to confirm it renders correctly
 - If API: test with a sample request
 - If DB changes: verify schema/migrations apply cleanly
+- **Re-check the loud-guard mandate** (Pre-Code Checklist): for any DB/Supabase call you added or touched, confirm `error` is inspected and surfaced — never `if (!data) return/throw` alone. Mocked tests and tsc will both pass while it silently fails.
+- **Silent failures in a critical always-on pipeline must be *detectable*.** For a path that runs unattended on every event (e.g. inbound→AI-reply, webhook→write, cron→send), don't rely on someone noticing the absence of output — ensure a health probe / canary / synthetic check exists so an outage alerts in **minutes, not days**. If no such monitor exists for the path you're touching, say so and propose adding one.
 
 ### 2. Acceptance Criteria
 - If the project has plans with acceptance criteria, **re-read EVERY criterion**

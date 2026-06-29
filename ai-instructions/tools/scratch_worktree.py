@@ -18,18 +18,29 @@ When to use it:
      their own dedicated per-branch worktree (scratch holds one branch at a
      time, so it is inherently serial).
 
+ONE scratch per repo, shared by every agent → CONCURRENCY HAZARD. If a second
+agent recycles it while a first agent is mid-fix, the reset --hard / clean / -B
+silently destroys the first agent's uncommitted work. To prevent that, this
+script refuses to recycle a BUSY scratch (see is_scratch_busy) and only proceeds
+once the previous occupant has committed + pushed and walked away — or when you
+pass --force to override. Each successful acquire stamps a heartbeat so a crashed
+session's lock ages out after STALE_MINUTES instead of blocking forever.
+
 Usage (run from anywhere inside the repo):
     py ~/.ai-instructions/tools/scratch_worktree.py fix/<scope>
     py ~/.ai-instructions/tools/scratch_worktree.py fix/<scope> --base dev
+    py ~/.ai-instructions/tools/scratch_worktree.py fix/<scope> --force  # clobber a busy scratch
     py ~/.ai-instructions/tools/scratch_worktree.py --path   # just print the path
 
 It will:
   1. Create the scratch worktree on first use (one-time npm install).
-  2. git fetch origin <base>; reset the scratch tree to a fresh <branch> off
+  2. Refuse if the scratch is BUSY (another agent's uncommitted/unpushed work, or
+     a fresh heartbeat) unless --force is given.
+  3. git fetch origin <base>; reset the scratch tree to a fresh <branch> off
      origin/<base> (discarding any leftover state from the previous fix).
-  3. npm install — skipped automatically when package-lock.json is unchanged
+  4. npm install — skipped automatically when package-lock.json is unchanged
      since the last run, so repeat resets are near-instant.
-  4. Print the path to edit in.
+  5. Stamp a heartbeat and print the path to edit in.
 """
 import argparse
 import hashlib
@@ -37,10 +48,13 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 
 SCRATCH_DIRNAME = "_scratch"
 SCRATCH_MARKER = ".scratch-keep"
+SCRATCH_HEARTBEAT = ".scratch-heartbeat"  # touched on every acquire; ages out for busy-detection
 DEPS_STAMP = "scratch-deps.sha256"  # stored in the main repo's .git (one scratch per repo)
+STALE_MINUTES = 30  # heartbeat older than this = the previous session walked away; safe to recycle
 
 
 def main():
@@ -52,6 +66,10 @@ def main():
                         help="Base branch (default: auto-detect dev else main).")
     parser.add_argument("--path", action="store_true",
                         help="Just print the scratch worktree path and exit.")
+    parser.add_argument("--force", action="store_true",
+                        help="Recycle the scratch worktree even if another agent appears to be "
+                             "using it (DESTROYS their uncommitted work). Only when you are sure "
+                             "no one else is mid-fix.")
     args = parser.parse_args()
 
     start = os.getcwd()
@@ -72,6 +90,10 @@ def main():
 
     base = args.base or detect_base(main_root)
 
+    # Ensure the marker + heartbeat are excluded repo-wide (idempotent; covers
+    # scratch worktrees created before this guard existed).
+    add_exclude(main_root)
+
     # 1. Fetch the latest base.
     info(f"Fetching origin/{base} ...")
     run(["git", "fetch", "origin", base], cwd=main_root, timeout=180)
@@ -87,6 +109,25 @@ def main():
 
     # 2. Ensure the scratch worktree exists (one-time create).
     created = ensure_scratch(main_root, scratch_path, origin_base)
+
+    # 2b. Refuse to clobber a scratch another agent is mid-fix in (unless --force).
+    if not created:
+        reasons = scratch_busy_reasons(scratch_path)
+        if reasons and not args.force:
+            die("Scratch worktree is BUSY — another agent appears to be working in it:\n"
+                + "\n".join(f"      - {r}" for r in reasons)
+                + f"\n\n    Path: {scratch_path}\n"
+                  "    Recycling now would DESTROY their uncommitted work.\n"
+                  "    Options:\n"
+                  "      - Wait for them to commit + push, then re-run this command.\n"
+                  "      - Use a dedicated per-branch worktree instead:\n"
+                  "          git worktree add ../.worktrees/<project>/<branch> -b <branch> origin/"
+                  + base + "\n"
+                  "      - If you are CERTAIN no one else is in it (e.g. a crashed session), re-run "
+                  "with --force.")
+        if reasons and args.force:
+            warn("--force: recycling a BUSY scratch worktree. Discarding:\n"
+                 + "\n".join(f"      - {r}" for r in reasons))
 
     # 3. Reset to a fresh branch off the base.
     info(f"Resetting scratch worktree to '{args.branch}' off {origin_base} ...")
@@ -104,6 +145,9 @@ def main():
 
     # 4. npm install — skipped when the lockfile is unchanged.
     maybe_npm_install(main_root, scratch_path, force=created)
+
+    # 5. Stamp the heartbeat so a concurrent agent sees this slot as busy.
+    touch_heartbeat(scratch_path)
 
     print()
     info(f"Scratch worktree ready on branch '{args.branch}':")
@@ -159,6 +203,71 @@ def ref_exists(cwd, ref):
         return False
 
 
+# ─────────────────────────────────────────────
+# Busy-detection (concurrency guard)
+# ─────────────────────────────────────────────
+
+def scratch_busy_reasons(scratch_path):
+    """Return a list of human-readable reasons the scratch is in active use, or
+    [] if it is safe to recycle.
+
+    Busy when ANY of:
+      - the working tree has uncommitted changes (excludes the marker/heartbeat,
+        which live in .git/info/exclude), OR
+      - the checked-out branch has commits not yet on its remote (work at risk if
+        we reset before it's pushed), OR
+      - the heartbeat was touched within STALE_MINUTES (a live session).
+
+    The normal end-state — committed AND pushed AND walked away long enough for the
+    heartbeat to age out — reports NOT busy, so recycling stays frictionless."""
+    reasons = []
+
+    # Ignore our own marker/heartbeat files — they are bookkeeping, not user work,
+    # and would otherwise make the scratch look perpetually dirty if .git/info/exclude
+    # wasn't applied for any reason.
+    own = {SCRATCH_MARKER, SCRATCH_HEARTBEAT}
+    dirty_lines = [
+        ln for ln in run(["git", "status", "--porcelain"], cwd=scratch_path).stdout.splitlines()
+        if ln.strip() and os.path.basename(ln[3:].strip()) not in own
+    ]
+    if dirty_lines:
+        reasons.append(f"{len(dirty_lines)} uncommitted change(s) in the working tree")
+
+    branch = run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=scratch_path).stdout.strip()
+    if branch and branch != "HEAD":
+        # Commits on this branch not reachable from any remote-tracking ref = unpushed.
+        unpushed = run(
+            ["git", "rev-list", "--count", "HEAD", "--not", "--remotes"],
+            cwd=scratch_path,
+        ).stdout.strip()
+        if unpushed.isdigit() and int(unpushed) > 0:
+            reasons.append(f"branch '{branch}' has {unpushed} unpushed commit(s)")
+
+    age = heartbeat_age_minutes(scratch_path)
+    if age is not None and age < STALE_MINUTES:
+        reasons.append(f"heartbeat is {age:.0f} min old (< {STALE_MINUTES} min — a live session)")
+
+    return reasons
+
+
+def heartbeat_age_minutes(scratch_path):
+    """Minutes since the heartbeat was last touched, or None if it doesn't exist."""
+    hb = os.path.join(scratch_path, SCRATCH_HEARTBEAT)
+    try:
+        return (time.time() - os.path.getmtime(hb)) / 60.0
+    except OSError:
+        return None
+
+
+def touch_heartbeat(scratch_path):
+    """Write/refresh the heartbeat marker so concurrent agents see this slot busy."""
+    try:
+        with open(os.path.join(scratch_path, SCRATCH_HEARTBEAT), "w", encoding="utf-8") as f:
+            f.write(f"acquired={int(time.time())} pid={os.getpid()}\n")
+    except Exception as e:
+        warn(f"Could not write {SCRATCH_HEARTBEAT}: {e}")
+
+
 def is_registered_worktree(main_root, scratch_path):
     target = os.path.normpath(os.path.abspath(scratch_path)).lower()
     try:
@@ -207,18 +316,20 @@ def write_marker(scratch_path):
 
 
 def add_exclude(main_root):
-    """Add the marker to .git/info/exclude (shared across worktrees) so it never
-    shows up in `git status` or gets removed by `git clean -fd`."""
+    """Add the scratch marker + heartbeat to .git/info/exclude (shared across
+    worktrees) so they never show up in `git status` (which would make the scratch
+    look dirty and busy) or get removed by `git clean -fd`."""
     try:
         exclude = os.path.join(main_root, ".git", "info", "exclude")
         existing = ""
         if os.path.isfile(exclude):
             with open(exclude, "r", encoding="utf-8") as f:
                 existing = f.read()
-        if SCRATCH_MARKER not in existing:
-            os.makedirs(os.path.dirname(exclude), exist_ok=True)
+        os.makedirs(os.path.dirname(exclude), exist_ok=True)
+        to_add = [name for name in (SCRATCH_MARKER, SCRATCH_HEARTBEAT) if name not in existing]
+        if to_add:
             with open(exclude, "a", encoding="utf-8") as f:
-                f.write(f"\n# reusable scratch worktree marker\n{SCRATCH_MARKER}\n")
+                f.write("\n# reusable scratch worktree markers\n" + "".join(f"{n}\n" for n in to_add))
     except Exception as e:
         warn(f"Could not update .git/info/exclude: {e}")
 

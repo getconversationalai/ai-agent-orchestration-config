@@ -54,13 +54,22 @@ The main working tree may have uncommitted changes from another agent, another c
 - ✅ Quick single-concern fixes you'll finish and merge in one pass.
 - ❌ NOT feature-sized work, anything long-running, or parallel multi-agent work — those still get a dedicated per-branch worktree. The scratch worktree holds one branch at a time, so it is inherently serial.
 
+> **⚠️ ONE scratch per repo — it is SHARED across every agent and session.** There is exactly one scratch worktree per repo, and any agent in any session can recycle it. Recycling does a `git reset --hard` + `git clean -fd` + `checkout -B`, which **silently destroys whatever the previous occupant had uncommitted there.** This has actually happened — a second session hard-reset a scratch another agent was mid-fix in.
+
+**Before you claim the scratch — check it's not in use (the script enforces this, but reason about it too):**
+- The helper script **refuses to recycle a BUSY scratch**: busy = uncommitted changes, OR the checked-out branch has unpushed commits, OR a heartbeat touched within the last 30 min (a live session). If it's busy you'll get a hard error naming what's there — **do NOT `--force` past it blindly**; either wait for that agent to commit + push, or spin up a **dedicated per-branch worktree** instead.
+- The normal end-state (committed + pushed + walked away) reports *not busy*, so recycling for the next quick fix stays frictionless. A crashed session's lock ages out after 30 min.
+- **If you are about to run two quick fixes concurrently, only ONE can use the scratch.** The second gets its own dedicated worktree — don't both grab scratch.
+
 **Use it (one command, run from anywhere in the repo):**
 ```bash
 py ~/.ai-instructions/tools/scratch_worktree.py fix/<scope>
 # branch off dev instead of main:
 py ~/.ai-instructions/tools/scratch_worktree.py fix/<scope> --base dev
+# ONLY if you are certain a busy-looking scratch is a dead/crashed session:
+py ~/.ai-instructions/tools/scratch_worktree.py fix/<scope> --force
 ```
-This fetches `origin/<base>`, resets the scratch tree to a fresh `fix/<scope>` branch off the latest `origin/<base>` (discarding the previous fix's leftovers), then runs `npm install` — **skipped automatically when `package-lock.json` is unchanged**, so repeat resets are near-instant. It prints the scratch path to edit in. The first run creates the worktree (one-time full install).
+This fetches `origin/<base>`, **refuses if the scratch is busy** (unless `--force`), then resets the scratch tree to a fresh `fix/<scope>` branch off the latest `origin/<base>` (discarding the previous fix's leftovers), runs `npm install` — **skipped automatically when `package-lock.json` is unchanged**, so repeat resets are near-instant — and stamps a heartbeat so concurrent agents see the slot as busy. It prints the scratch path to edit in. The first run creates the worktree (one-time full install).
 
 Then: edit in the scratch worktree → build/verify → commit → push to `main` (or open a PR) → walk away. The next quick fix just re-runs the command with a new branch name. **Never delete the scratch worktree** — recycle it by re-running the command.
 
