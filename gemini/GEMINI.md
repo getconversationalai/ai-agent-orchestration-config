@@ -16,7 +16,7 @@ This user runs Claude Code, Gemini CLI, and Codex. Each reads its own files; kee
 
 When you edit any of these global files (this router or a `~/.ai-instructions/` doc), ASK whether to mirror the change to the other tools' files. Never assume.
 
-These local files are the source of truth. They are backed up to the private GitHub repo **`getconversationalai/ai-agent-orchestration-config`**, which can go stale until synced. Sync flow: edit the live files → run `capture.ps1` → commit → push.
+These local files are the source of truth. They are backed up to the private GitHub repo **`getconversationalai/ai-agent-orchestration-config`**, **cloned locally at `C:\dev\ai-agent-orchestration-config`** (NOT under `~` — it sits with the project repos in `C:\dev\`). The repo can go stale until synced. Sync flow: edit the live files → run the repo's own `scripts\capture.ps1` (it copies the live home files into the repo per `sync-manifest.txt`) → commit → push. So: `powershell -File C:\dev\ai-agent-orchestration-config\scripts\capture.ps1`, then `git -C C:\dev\ai-agent-orchestration-config add … && commit && push`.
 
 ## Always-on rules (apply every turn — never skip)
 - **Action Gate:** A question (ends in "?", or "how/what/why/can we/should we…") is NOT permission to act. Answer only; wait for an explicit action verb (do it, build, fix, implement, create).
