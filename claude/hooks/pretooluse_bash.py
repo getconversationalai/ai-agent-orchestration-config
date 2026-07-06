@@ -80,20 +80,10 @@ def main():
     # ASK USER — require confirmation before proceeding
     # ============================================================
 
-    # Warn on bare 'cd' commands (CWD persists between Bash tool calls)
-    # Allow cd in && chains (common pattern: cd dir && command) since the
-    # persistent CWD change is intentional in those cases, but warn on
-    # standalone cd which silently drifts CWD for all future commands.
-    #
-    # EXEMPTION: a `cd <dir>; <read>; <read>` chain composed only of read-only
-    # commands (grep/cat/ls/find/git status/etc.) never prompts — per the user's
-    # standing rule that information-gathering must never ask for permission.
-    if re.match(r"^cd\s+(?!/dev/null)", command) and "&&" not in command:
-        if not _is_readonly_after_cd(command):
-            ask(
-                "'cd' changes the persistent working directory and can break hooks/paths in future commands. "
-                "Use git -C, npx --project, npm --prefix, or absolute paths instead."
-            )
+    # NOTE: bare `cd` no longer prompts. Per the Autonomy / Permission Policy
+    # (see ~/.claude/CLAUDE.md), only main-branch git ops, history/loss git ops,
+    # and DB writes prompt. `cd` drift is a workflow nudge, not one of those
+    # categories, so it now runs silently.
 
     # --- Git merge checks (most specific first) ---
     if re.search(r"git\s+.*merge\b", command):
@@ -133,22 +123,23 @@ def main():
             except Exception:
                 pass
 
-        # Check 2: Merging to main/dev with active agents?
-        if re.search(r"HEAD:(main|master|dev)\b", command) or \
-           re.search(r"merge\s+.*\b(origin/)?(main|master|dev)\b", command):
-            check_workboard_active_agents()
-
-        # General merge confirmation
+        # General merge confirmation (ANY branch). Per the Autonomy / Permission
+        # Policy, merge always prompts. This single ask covers feature-branch
+        # merges AND merge-from-main-into-current alike — no second workboard
+        # prompt on top of it (keeps it to one confirmation).
         ask("git merge modifies branch history. Approve to proceed.")
 
     # --- Git push checks (differentiated: main=ask, feature branches=allow) ---
-    if re.search(r"git\s+push\b", command):
+    # NOTE: `(?:-C\s+\S+\s+)?` tolerates the `git -C <path> push ...` form this
+    # user relies on (never `cd`s — always `git -C <worktree>`). Without it, a
+    # push to main via `-C` would slip past the gate entirely.
+    if re.search(r"git\s+(?:-C\s+\S+\s+)?push\b", command):
         # Push to main/master — always ask
         # Match main/master as a standalone refspec (e.g., "git push origin main", "git push -u origin main")
         # but NOT inside branch names like "feat/main-page-redesign"
         push_to_base = (
-            re.search(r"git\s+push\s+(?:-[a-zA-Z]+\s+)*\S+\s+(main|master)\s*$", command)
-            or re.search(r"git\s+push\s+(?:-[a-zA-Z]+\s+)*(main|master)\s*$", command)
+            re.search(r"git\s+(?:-C\s+\S+\s+)?push\s+(?:-[a-zA-Z]+\s+)*\S+\s+(main|master)\s*$", command)
+            or re.search(r"git\s+(?:-C\s+\S+\s+)?push\s+(?:-[a-zA-Z]+\s+)*(main|master)\s*$", command)
             or re.search(r"\S+:(main|master)\s*$", command)
         )
         if push_to_base:
@@ -156,20 +147,27 @@ def main():
             require_fetch_before(command, push_to_base.group(1), "git push")
             ask("⚠️ git push targeting MAIN/MASTER. This affects the shared main branch. Approve to proceed.")
         # Bare git push (no branch specified) — ask to be safe
-        elif re.search(r"git\s+push\s*$", command) or \
-             re.search(r"git\s+push\s+-[a-zA-Z]+\s*$", command):
+        elif re.search(r"git\s+(?:-C\s+\S+\s+)?push\s*$", command) or \
+             re.search(r"git\s+(?:-C\s+\S+\s+)?push\s+-[a-zA-Z]+\s*$", command):
             ask(
                 "git push with no explicit branch specified. "
                 "Verify you're not pushing to main. Approve to proceed."
             )
         # Push to feature branch — ALLOWED without confirmation (remote backup)
 
+    # --- Git pull that pulls MAIN into the current branch — ask (autonomy policy) ---
+    # A pull whose SOURCE ref is main/master merges the base branch into the branch
+    # you're on. Bare `git pull` on a feature branch merges that branch's OWN
+    # upstream (not main), so it stays silent.
+    if re.search(r"git\s+(?:-C\s+\S+\s+)?pull\b", command) and \
+       re.search(r"(?:^|\s)(origin/)?(main|master)\b", command):
+        ask("⚠️ git pull is merging MAIN into your current branch. Approve to proceed.")
+
     # --- Git update-ref to main/dev (new merge strategy needs confirmation) ---
-    update_ref_match = re.search(r"git\s+update-ref\s+refs/heads/(main|master|dev)\b", command)
+    update_ref_match = re.search(r"git\s+(?:-C\s+\S+\s+)?update-ref\s+refs/heads/(main|master|dev)\b", command)
     if update_ref_match:
         # Per ~/.claude/CLAUDE.md Git Merge rule, fetch must precede.
         require_fetch_before(command, update_ref_match.group(1), "git update-ref")
-        check_workboard_active_agents()
         ask(
             "git update-ref will move the main/dev branch pointer. "
             "This is equivalent to merging into main. Approve to proceed."

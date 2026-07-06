@@ -13,6 +13,7 @@ import sys
 import json
 import os
 import re
+import subprocess
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from main_tree_drift_check import (  # noqa: E402
@@ -26,8 +27,36 @@ from main_tree_drift_check import (  # noqa: E402
 PROTECTED_BRANCHES = ("main", "master", "dev")
 
 
+def _current_branch(command: str):
+    """Resolve the branch the command operates on (honoring a `-C <dir>` flag),
+    so we can tell whether a `git merge` actually UPDATES a protected branch."""
+    c_match = re.search(r"git\s+-C\s+['\"]?([^'\"\s]+)['\"]?\s+", command)
+    target_dir = c_match.group(1) if c_match else "."
+    try:
+        result = subprocess.run(
+            ["git", "-C", target_dir, "rev-parse", "--abbrev-ref", "HEAD"],
+            capture_output=True, text=True, timeout=5,
+        )
+        if result.returncode == 0:
+            return result.stdout.strip()
+    except Exception:
+        pass
+    return None
+
+
 def classify(command: str):
-    """Return ('ask' | 'deny' | None, short_label) based on command content."""
+    """Return ('deny' | None, short_label) based on command content.
+
+    Only DENY operations that UPDATE a protected branch while the main tree has
+    drift — the merge-back protocol's `git checkout -f` on the main tree would
+    destroy that uncommitted drift (real, irreversible data loss). This is a
+    hard-block category the user chose to keep.
+
+    Routine `git commit` and feature-branch `git push` are NOT gated here — they
+    run silently per the Autonomy / Permission Policy. Feature-branch merges are
+    handled by the normal single merge confirmation in pretooluse_bash.py, so
+    they are not hard-denied here either.
+    """
     c = command.strip()
     for sep in ("&&", ";", "||", "|"):
         if sep in c:
@@ -36,21 +65,22 @@ def classify(command: str):
     if not re.search(r"\bgit\b", c):
         return None, ""
 
-    m = re.search(r"\bgit\s+update-ref\s+refs/heads/(\S+)", c)
+    m = re.search(r"\bgit\s+(?:-C\s+\S+\s+)?update-ref\s+refs/heads/(\S+)", c)
     if m:
         target = m.group(1)
         if target in PROTECTED_BRANCHES:
             return "deny", f"update-ref to protected branch `{target}`"
         return None, ""
 
-    if re.search(r"\bgit\s+merge\b", c):
-        return "deny", "merge"
-
-    if re.search(r"\bgit\s+push\b", c):
-        return "ask", "push"
-
-    if re.search(r"\bgit\s+commit\b", c):
-        return "ask", "commit"
+    # A merge only endangers main-tree drift when it updates a PROTECTED branch
+    # (i.e. the current branch is main/master/dev). Merges into a feature branch
+    # never trigger the destructive checkout -f, so let them through.
+    # `(?:-C\s+\S+\s+)?` tolerates the `git -C <path> merge` form.
+    if re.search(r"\bgit\s+(?:-C\s+\S+\s+)?merge\b", c):
+        cur = _current_branch(command)
+        if cur in PROTECTED_BRANCHES:
+            return "deny", f"merge into protected branch `{cur}`"
+        return None, ""
 
     return None, ""
 
@@ -82,11 +112,10 @@ def main():
         f"\n"
         f"{format_drift_message(drift, main_path)}\n"
         f"\n"
-        f"Why this matters:\n"
-        f"  - commit / push: the drifted files are orphaned and will NOT be included in this operation.\n"
-        f"  - merge / update-ref to protected branch: ~/.claude/CLAUDE.md's merge-back protocol calls\n"
-        f"    `git -C <main-tree> checkout -f` after update-ref. That WILL DESTROY these uncommitted\n"
-        f"    changes.\n"
+        f"Why this is blocked:\n"
+        f"  This operation updates a protected branch. ~/.claude/CLAUDE.md's merge-back protocol\n"
+        f"  calls `git -C <main-tree> checkout -f` after update-ref — that WILL DESTROY the\n"
+        f"  uncommitted changes above. Migrate the drift into a worktree first.\n"
         f"\n"
         f"{format_remediation()}"
     )

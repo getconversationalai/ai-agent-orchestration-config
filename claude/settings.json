@@ -63,11 +63,16 @@
           },
           {
             "type": "command",
-            "command": "py ~/.claude/hooks/pretooluse_bash_confirm.py"
-          },
+            "command": "py ~/.claude/hooks/pretooluse_git_drift_check.py"
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__plugin_supabase_supabase__execute_sql|mcp__plugin_supabase_supabase__apply_migration",
+        "hooks": [
           {
             "type": "command",
-            "command": "py ~/.claude/hooks/pretooluse_git_drift_check.py"
+            "command": "py ~/.claude/hooks/pretooluse_db_mcp.py"
           }
         ]
       },
@@ -250,7 +255,7 @@
   "skipDangerousModePermissionPrompt": false,
   "skipWorkflowUsageWarning": true,
   "fastMode": true,
-  "effortLevel": "high",
+  "effortLevel": "xhigh",
   "cleanupPeriodDays": 365,
-  "model": "sonnet"
+  "model": "opus[1m]"
 }
