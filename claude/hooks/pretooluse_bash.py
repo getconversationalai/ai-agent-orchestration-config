@@ -137,10 +137,14 @@ def main():
         # Push to main/master — always ask
         # Match main/master as a standalone refspec (e.g., "git push origin main", "git push -u origin main")
         # but NOT inside branch names like "feat/main-page-redesign"
+        # Detect a push whose refspec is main/master. NOT end-anchored — trailing
+        # pipes/redirects (`| tail`, `2>&1`) must not defeat the gate. The branch
+        # token must be whole (bounded by whitespace / separator / end) so
+        # `feat/main-x` does not false-positive. `[^;&|>\n]*?` keeps the match
+        # inside the push segment (won't cross into a chained command).
         push_to_base = (
-            re.search(r"git\s+(?:-C\s+\S+\s+)?push\s+(?:-[a-zA-Z]+\s+)*\S+\s+(main|master)\s*$", command)
-            or re.search(r"git\s+(?:-C\s+\S+\s+)?push\s+(?:-[a-zA-Z]+\s+)*(main|master)\s*$", command)
-            or re.search(r"\S+:(main|master)\s*$", command)
+            re.search(r"git\s+(?:-C\s+\S+\s+)?push\b[^;&|>\n]*?\s(main|master)(?=\s|$|[;&|>])", command)
+            or re.search(r"git\s+(?:-C\s+\S+\s+)?push\b[^;&|>\n]*?\s\S+:(main|master)(?=\s|$|[;&|>])", command)
         )
         if push_to_base:
             # Per ~/.claude/CLAUDE.md Git Merge rule, fetch must precede.
