@@ -69,8 +69,10 @@ def main():
     if re.match(r"^python\s+", command) or re.match(r"^python3\s+", command):
         block("Use 'py' instead of 'python' on Windows. Example: py scripts/my_script.py")
 
-    # Block git add on sensitive files
-    if re.search(r"git\s+add\s+.*\.(env|pem|key|p12|pfx)\b", command):
+    # Block git add on sensitive files.
+    # Exempt template/example files (*.example, *.sample, *.template, *.dist),
+    # which by convention hold only empty placeholders, never real secrets.
+    if re.search(r"git\s+add\s+.*\.(env|pem|key|p12|pfx)(?!\.(?:example|sample|template|dist)\b)\b", command):
         block("Never commit sensitive files (.env, .pem, .key). These must stay in .gitignore.")
 
     if re.search(r"git\s+add\s+.*(credentials|secrets|service.account)", command, re.IGNORECASE):

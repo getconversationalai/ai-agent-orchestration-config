@@ -50,8 +50,10 @@ def main():
        re.search(r"\S+:(main|master)\s*$", command):
         block("Never push directly to main/master. Use feature branches and PRs.")
 
-    # Block git add on sensitive files
-    if re.search(r"git\s+add\s+.*\.(env|pem|key|p12|pfx)\b", command):
+    # Block git add on sensitive files.
+    # Exempt template/example files (*.example, *.sample, *.template, *.dist),
+    # which by convention hold only empty placeholders, never real secrets.
+    if re.search(r"git\s+add\s+.*\.(env|pem|key|p12|pfx)(?!\.(?:example|sample|template|dist)\b)\b", command):
         block("Never commit sensitive files (.env, .pem, .key). These must stay in .gitignore.")
 
     # Block git add on credentials files
