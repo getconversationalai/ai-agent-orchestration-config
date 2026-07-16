@@ -66,6 +66,8 @@ When fixing a bug, follow this process — do NOT skip straight to writing code:
 
 ## Problem-Solving Approach
 
+**Default to the robust option.** Whenever you are deciding between different ways to do something, choose the better, more robust, more correct option **by default** — even when it means more effort or more code. Do not pick the quickest or smallest-diff path just to save work; the default bias is toward the solution that is more correct, handles more edge cases, fails loudly, and is more maintainable. Only trade robustness away when the user has **explicitly** asked for the lighter path (e.g. "just hack something quick", "throwaway prototype", "smallest possible change"). When the trade-off is significant and the user hasn't specified, briefly name the more-robust option and why you're choosing it rather than silently taking the cheap one.
+
 **Prefer proper solutions over workarounds.** Always use the right tool for the job rather than hacking around limitations. If a proper approach requires installing a safe, standard tool or dependency (e.g., `psql`, a CLI utility, an npm package), install it rather than writing a fragile workaround. Workarounds accumulate tech debt — proper solutions don't.
 
 When unsure how to implement something, follow this process strictly:
