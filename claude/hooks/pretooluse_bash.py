@@ -78,6 +78,13 @@ def main():
     if re.search(r"git\s+add\s+.*(credentials|secrets|service.account)", command, re.IGNORECASE):
         block("Never commit credential files. These must stay in .gitignore.")
 
+    # Block ALL mutating `git stash` forms in repos with linked worktrees.
+    # refs/stash lives in the shared .git common dir, so the stash stack is ONE
+    # global LIFO across every concurrent agent worktree — stash/pop can wipe
+    # your own uncommitted work or grab/destroy another session's. Three real
+    # incidents (2026-07-01, 2026-07-09, 2026-07-17) before this hard block.
+    check_stash_in_shared_worktree_repo(command)
+
     # ============================================================
     # ASK USER — require confirmation before proceeding
     # ============================================================
@@ -227,7 +234,10 @@ def main():
     if re.search(r"git\s+cherry-pick\b", command):
         ask("git cherry-pick modifies branch history. Approve to proceed.")
 
-    if re.search(r"git\s+stash\s+(drop|clear)\b", command):
+    # NOTE: in repos WITH linked worktrees, every mutating stash form is hard-
+    # blocked earlier by check_stash_in_shared_worktree_repo(). This ask only
+    # applies in single-worktree repos, where drop/clear is the remaining risk.
+    if re.search(r"git\s+(?:-C\s+\S+\s+)?stash\s+(drop|clear)\b", command):
         ask("git stash drop/clear permanently deletes stashed work. Approve to proceed.")
 
     if re.search(r"git\s+tag\s+-d\b", command):
@@ -681,6 +691,67 @@ def _is_readonly_after_cd(command):
     if not rest:
         return False  # bare `cd` with nothing after still warns (CWD drift)
     return all(_segment_is_readonly(s) for s in rest)
+
+
+# `git stash` forms that only read the stash stack.
+_STASH_READONLY_ARGS = {"list", "show", "--help", "-h"}
+
+
+def _quoted_spans(command):
+    """Spans of single/double-quoted regions, so string literals (commit
+    messages, echo payloads) don't false-positive command detection."""
+    return [m.span() for m in re.finditer(r"\"[^\"]*\"|'[^']*'", command)]
+
+
+def check_stash_in_shared_worktree_repo(command):
+    """Hard-block mutating `git stash` forms when the target repo has linked
+    worktrees (the stash stack is shared across all of them). Read-only forms
+    (`list`, `show`) pass. Repos without linked worktrees keep legacy behavior
+    (plain stash allowed; drop/clear still asks in main())."""
+    spans = _quoted_spans(command)
+    for m in re.finditer(r"\bgit\s+((?:-[cC]\s+\S+\s+|--\S+\s+)*)stash\b\s*(\S*)", command):
+        if any(a <= m.start() < b for a, b in spans):
+            continue  # inside a string literal, not a real invocation
+        if m.group(2).strip("\"'") in _STASH_READONLY_ARGS:
+            continue
+        # bare `git stash`, option flags (-u/-k/-m), and every subcommand other
+        # than list/show (push/save/pop/apply/drop/clear/branch/store/create)
+        # all mutate the shared stack.
+        target_dir = os.getcwd()
+        c_flag = re.search(r"-C\s+[\"']?([^\"'\s]+)", m.group(1))
+        if c_flag:
+            target_dir = c_flag.group(1)
+        try:
+            result = subprocess.run(
+                ["git", "-C", target_dir, "rev-parse", "--git-common-dir"],
+                capture_output=True, text=True, timeout=5,
+            )
+            common_dir = result.stdout.strip() if result.returncode == 0 else ""
+        except Exception:
+            common_dir = ""
+        if not common_dir:
+            continue  # not a git repo — the stash would fail on its own
+        if not os.path.isabs(common_dir):
+            common_dir = os.path.join(target_dir, common_dir)
+        worktrees_dir = os.path.join(common_dir, "worktrees")
+        try:
+            has_linked_worktrees = os.path.isdir(worktrees_dir) and bool(os.listdir(worktrees_dir))
+        except Exception:
+            has_linked_worktrees = False
+        if has_linked_worktrees:
+            block(
+                "NEVER run mutating `git stash` forms in this repo — it has linked "
+                "worktrees, so the stash stack (refs/stash) is ONE SHARED stack "
+                "across every concurrent agent session. A stash/pop here can wipe "
+                "your uncommitted work or grab/destroy ANOTHER session's (incidents: "
+                "2026-07-01, 2026-07-09, 2026-07-17). Do this instead:\n"
+                "  - Compare against a clean tree: git worktree add <tmp-path> <commit>\n"
+                "  - Inspect a base version of a file: git show <ref>:<path>\n"
+                "  - Move uncommitted work elsewhere: git diff HEAD --binary > x.patch, "
+                "then git -C <worktree> apply x.patch (copy untracked files directly)\n"
+                "  - Need a clean tree in place: make a WIP commit, reset it later.\n"
+                "Read-only `git stash list` / `git stash show` remain allowed."
+            )
 
 
 def block(reason):

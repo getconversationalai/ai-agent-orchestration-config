@@ -12,6 +12,7 @@ import sys
 import json
 import os
 import subprocess
+import tempfile
 
 
 CODE_EXTENSIONS = {
@@ -46,6 +47,14 @@ def main():
     if not file_path:
         sys.exit(0)
 
+    # Session scratchpads / OS temp files are never project code -> allow.
+    # (2026-07-17: this guard wrongly blocked a scratchpad .py write — HOME is
+    # itself a git repo, so repo detection resolved it as a "main tree".)
+    abs_target = os.path.normcase(os.path.abspath(file_path))
+    temp_root = os.path.normcase(os.path.abspath(tempfile.gettempdir()))
+    if abs_target.startswith(temp_root + os.sep):
+        sys.exit(0)
+
     # Target is inside a worktree directory -> allow
     normalized = file_path.replace("\\", "/").lower()
     if "/.worktrees/" in normalized:
@@ -54,6 +63,12 @@ def main():
     # Not in a git repo at all -> hook doesn't apply
     repo_root = _run(["git", "rev-parse", "--show-toplevel"])
     if not repo_root:
+        sys.exit(0)
+
+    # HOME itself is a (dotfiles) git repo, not a project tree. Global config
+    # (~/.claude/**, ~/.ai-instructions/**) is edited live per the documented
+    # capture.ps1 sync flow — the worktree-isolation rule does not apply there.
+    if os.path.normcase(os.path.abspath(repo_root)) == os.path.normcase(os.path.abspath(os.path.expanduser("~"))):
         sys.exit(0)
 
     # Target file is OUTSIDE the CWD's repo (e.g. ~/.claude/hooks/*, other
@@ -93,8 +108,10 @@ def main():
         f"\n"
         f"1. Check for existing uncommitted code drift in the main tree:\n"
         f"     git -C \"{repo_root}\" status --porcelain\n"
-        f"   If any code files show as M/A/D, stash them BEFORE creating the worktree:\n"
-        f"     git -C \"{repo_root}\" stash push -u -m \"migrate-to-worktree\"\n"
+        f"   If any code files show as M/A/D, capture them as a PATCH. Do NOT `git stash` —\n"
+        f"   the stash stack is shared across ALL worktrees and concurrent agent sessions:\n"
+        f"     git -C \"{repo_root}\" diff HEAD --binary > \"{repo_root}/migrate-drift.patch\"\n"
+        f"   (untracked new files are not in the patch — copy them into the worktree by path)\n"
         f"\n"
         f"2. Ensure the base branch `{base_branch}` is up to date:\n"
         f"     git -C \"{repo_root}\" fetch origin {base_branch}\n"
@@ -113,8 +130,11 @@ def main():
         f"     npm install --prefix <worktree-absolute-path>\n"
         f"   For monorepos, install in each package directory (e.g. server/, client/).\n"
         f"\n"
-        f"6. If you stashed in step 1, apply the stash INSIDE the worktree:\n"
-        f"     git -C <worktree-absolute-path> stash pop\n"
+        f"6. If you captured a patch in step 1, apply it INSIDE the worktree:\n"
+        f"     git -C <worktree-absolute-path> apply \"{repo_root}/migrate-drift.patch\"\n"
+        f"   Copy any untracked new files in as well. Leave the main tree's drift in place\n"
+        f"   until the worktree commit exists; only then discard it\n"
+        f"   (git -C \"{repo_root}\" checkout -- <paths>) and delete migrate-drift.patch.\n"
         f"\n"
         f"7. NEVER `cd` into the worktree (CLAUDE.md forbids it — breaks project hooks).\n"
         f"   Use absolute paths for all subsequent Edit/Write/Bash calls against the worktree.\n"

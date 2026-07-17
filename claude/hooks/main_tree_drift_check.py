@@ -77,9 +77,13 @@ def format_drift_message(drift, main_path):
 def format_remediation():
     return (
         "These files are orphaned in the main tree and will not be committed by any worktree.\n"
-        "Migrate them via stash+apply into a worktree before continuing:\n"
-        "  1. git -C <main-tree-path> stash push -u -m \"migrate-drift\"\n"
+        "Migrate them into a worktree via a PATCH — do NOT `git stash`: the stash stack is\n"
+        "shared across ALL worktrees, so stash/pop can destroy another session's work.\n"
+        "  1. git -C <main-tree-path> diff HEAD --binary > <main-tree-path>/migrate-drift.patch\n"
+        "     (untracked new files are not in the patch — copy them into the worktree by path)\n"
         "  2. git -C <main-tree-path> worktree add ../.worktrees/<project>/<branch> -b <branch> dev\n"
-        "  3. git -C <worktree-path> stash pop\n"
+        "  3. git -C <worktree-path> apply <main-tree-path>/migrate-drift.patch\n"
         "  4. Commit the migrated work from inside the worktree.\n"
+        "  5. Only after that commit exists: discard the main-tree drift\n"
+        "     (git -C <main-tree-path> checkout -- <paths>) and delete migrate-drift.patch.\n"
     )
