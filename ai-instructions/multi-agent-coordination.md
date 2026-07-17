@@ -1,7 +1,7 @@
 ---
 name: multi-agent-coordination
-description: Coordinate parallel agents via WORKBOARD; dependency analysis; progress tracking; subagents; merge ordering; migration naming; phase/plan completion summary
-when_to_read: before launching parallel agents, registering work, tracking progress, merging multiple agents, or finishing a phase/plan
+description: Coordinate parallel agents via WORKBOARD; dependency analysis; progress tracking; subagents (when to fan out vs run inline; tiering test/review rigor by risk); merge ordering; migration naming; phase/plan completion summary
+when_to_read: before launching parallel agents, registering work, tracking progress, merging multiple agents, finishing a phase/plan, or deciding whether to dispatch sub-agents and how much test/review rigor a task warrants
 sections:
   - Before starting any work
   - Dependency analysis
@@ -266,6 +266,36 @@ The first time `workboard.py` runs in a project that has a hand-written `WORKBOA
 Add `WORKBOARD.json`, `PROGRESS.json`, `WORKBOARD.md`, and `PROGRESS.md` to `.gitignore` — they're local coordination state, not source code.
 
 ## Subagents
+
+### Why dispatch a sub-agent — fan-out, not ceremony
+
+The primary reason to dispatch sub-agents is **fan-out: running independent work concurrently to cut wall-clock time.** Context isolation (on tasks big enough to blow a context window) and independent review (on risky logic) are secondary benefits, not the purpose.
+
+**Anti-pattern — the sequential sub-agent loop.** Dispatching one sub-agent per task in sequence (implement task 1 → review it → implement task 2 → review it → …) is worst-of-both: you pay full dispatch overhead *and* full review cost while getting **zero** parallelism. It is no faster than doing the work inline, and usually slower. If the tasks must run in order, **run them inline in the main session.**
+
+Decide with two independent dials — set them **per task, not per plan**:
+
+**Dial 1 — Parallelism, by _independence_:**
+| Situation | Do this |
+|---|---|
+| Several tasks that don't touch each other's outputs | **Fan out** — dispatch concurrently, one worktree per agent (they mutate files; without isolation they collide) |
+| Tasks that share a signature/schema/contract, or task N consumes task N-1's output | **Inline, sequential** — no sub-agent |
+| A single task large enough to flood the context window | **Sub-agent even if solo** — isolation is the win here, not speed |
+
+Split the plan into independent *tracks* first; parallelism is only available if the plan is structured for it. A plan whose tasks form one dependency chain does not parallelize — don't fake it with sub-agents.
+
+**Dial 2 — Rigor, by _risk_:**
+| Tier | Examples | Tests | Review |
+|---|---|---|---|
+| **Mechanical** | scaffold, config loader, wiring, plain CRUD | one happy-path test; skip the strict RED ritual | inline self-check; no separate reviewer |
+| **Integration** | endpoints with role enforcement, forms, list views | key-path tests | one batched review per wave, not per task |
+| **Crown jewels** | money, auth boundaries, state machines, migrations | **full TDD, strict RED, full matrix** | **dedicated independent reviewer** |
+
+Never apply the crown-jewels row to an entire plan — that is what makes a foundation layer take all day.
+
+**On the strict RED step:** it earns its keep exactly where *a test that would silently pass against broken logic is dangerous* — billing, auth, state transitions. Proving the test fails first is what tells you the test tests something. Where the code is trivial (a health endpoint returning 200), RED-first is ceremony: keep the test, drop the ritual.
+
+Tests themselves are never the thing to cut. The dial is **ceremony**, not coverage.
 
 ### Completion
 

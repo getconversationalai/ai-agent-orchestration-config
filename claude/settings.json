@@ -253,7 +253,7 @@
       }
     }
   },
-  "effortLevel": "medium",
+  "effortLevel": "max",
   "fastMode": true,
   "skipDangerousModePermissionPrompt": false,
   "skipWorkflowUsageWarning": true,
