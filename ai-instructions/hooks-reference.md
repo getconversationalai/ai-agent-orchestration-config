@@ -17,10 +17,10 @@ sections:
 
 | Hook | Matcher | What it does |
 |------|---------|-------------|
-| `pretooluse_bash.py` | Bash | **Blocks:** `python`/`python3` (use `py`), `git push` to main/master, `git add` on sensitive files, ALL `git worktree remove` (must use cleanup script), ALL `rm -rf` on worktree paths including node_modules (must use cleanup script), merges in main working tree. **Asks:** `cd` without `&&`, `git push` to main, `git merge`, `git update-ref` to main, `git branch -d` on unpushed branches, SQL execution. Also checks WORKBOARD.md for active agents before merges to main. |
+| `pretooluse_bash.py` | Bash | **Blocks:** `python`/`python3` (use `py`), `git push` to main/master, `git add` on sensitive files, ALL `git worktree remove` (must use cleanup script), ALL `rm -rf` on worktree paths including node_modules (must use cleanup script), merges in main working tree, ANY mutating `git stash` (bare/push/pop/apply/drop/clear) in a repo with linked worktrees — shared stash stack; `stash list`/`show` still allowed. **Asks:** `cd` without `&&`, `git push` to main, `git merge`, `git update-ref` to main, `git branch -d` on unpushed branches, `git stash drop`/`clear` in single-worktree repos, SQL execution. Also checks WORKBOARD.md for active agents before merges to main. |
 | `pretooluse_bash_confirm.py` | Bash | Double-check confirmation for high-risk shared-state operations only: SQL execution, git push to main, merge to main/dev, update-ref to main, rebase, cherry-pick, stash drop, tag delete, remote changes. Feature branch operations (push, merge within worktrees) are single-confirm only. |
 | `pretooluse_code.py` | Edit, Write | Blocks hardcoded Stripe secret keys, AWS access keys (`AKIA...`), `eval()`, `debugger` statements. |
-| `pretooluse_main_worktree_guard.py` | Edit, Write | Warns when editing code files in the main working tree (all code changes should happen in worktrees). Allows non-code files like WORKBOARD.md, MEMORY.md, plans. |
+| `pretooluse_main_worktree_guard.py` | Edit, Write | **Denies** edits to code files in the main working tree (all code changes must happen in worktrees), returning a worktree-migration playbook as the deny reason. Allows non-code files (WORKBOARD.md, MEMORY.md, plans), files under the OS temp dir (session scratchpads), the HOME dotfiles repo (global config), and any target outside the CWD's repo. |
 
 **PostToolUse — Reminders (printed after tool completes):**
 | Hook | What it does |
