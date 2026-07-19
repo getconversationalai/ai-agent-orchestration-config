@@ -111,6 +111,12 @@ After finishing ANY task or feature, verify the work before considering it done:
 - **Add a test for new behavior** where reasonably possible, matched to the right *level*: a **unit/integration test** for logic; if the change touches **multi-tenant data, a privileged/`SECURITY DEFINER` function, an access/RLS policy, or a webhook**, also add an **isolation/auth test** asserting another tenant (or an unsigned caller) is *blocked*; reserve slow **end-to-end** tests for a few critical user-facing flows. If a test is genuinely impractical, say why instead of skipping silently.
 - **A failing test is an alarm, not a chore.** If a test fails because you *accidentally* broke something, fix the **code** — never edit the test to make it pass. Change a test only when the *intended* behavior deliberately changed, and say so out loud when you do.
 
+### 4b. Evidence Hierarchy (what a claim of "verified" may rest on)
+- **Mocked tests are evidence of logic only** — never of framework semantics (middleware mutation, route mounting), SQL semantics (conflict targets, function signatures), or deploy wiring. For those, the ONLY evidence is a call through the real framework (supertest/integration) or against the running server.
+- **Never claim "zero regressions" from a suite whose assertions the same change rewrote** — a mechanical sweep that edits expected values edits the oracle; those tests pass against broken code by construction. Baseline-diff the suite only when assertions were untouched.
+- **Compat/back-compat paths are verified with OLD inputs**, not new-name happy paths — the entire purpose of the shim is traffic you are no longer generating yourself.
+- **Impact assessment needs request-level evidence.** Hard 4xx/5xx failures leave no DB trace; absence of DB evidence is not absence of affected users — check HTTP/provider logs before stating blast radius.
+
 ### 5. Security Review
 Check the code you wrote for these issues:
 

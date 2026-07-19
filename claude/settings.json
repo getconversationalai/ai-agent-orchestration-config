@@ -52,7 +52,7 @@
     ],
     "defaultMode": "bypassPermissions"
   },
-  "model": "opus[1m]",
+  "model": "sonnet",
   "hooks": {
     "PreToolUse": [
       {
@@ -253,9 +253,9 @@
       }
     }
   },
-  "effortLevel": "max",
+  "effortLevel": "low",
   "fastMode": true,
-  "skipDangerousModePermissionPrompt": false,
+  "skipDangerousModePermissionPrompt": true,
   "skipWorkflowUsageWarning": true,
   "agentPushNotifEnabled": true
 }

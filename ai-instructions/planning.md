@@ -42,7 +42,7 @@ Rule of thumb: if a detail would silently break when someone renames a file or r
 **Before executing ANY implementation plan, run a plan-review pass.** A plan is reviewed like code — because bugs get written *into* plans and then faithfully copied (real cases: a hardcoded production host and a missing `company_id` filter both shipped verbatim from plan snippets).
 
 - **Lightweight (every plan):** the plan's author re-reads it against the Reviewer Checklist below and fixes findings inline.
-- **Full adversarial (mandatory when the plan touches auth, tenant data, outbound URLs, DB migrations, money, or webhooks):** dispatch a **fresh reviewer subagent** whose only job is to find defects in the plan's own snippets and assumptions. It does not rubber-stamp.
+- **Full adversarial (mandatory when the plan touches auth, tenant data, outbound URLs, DB migrations, mechanical renames/sweeps over DB-coupled or API-contract strings, money, or webhooks):** dispatch a **fresh reviewer subagent** whose only job is to find defects in the plan's own snippets and assumptions. It does not rubber-stamp.
 - **Gate:** do not start execution while any Critical/High plan-finding is unresolved. Fixing the plan before coding is far cheaper than fixing shipped code.
 
 This is in addition to (not a replacement for) reviewing the resulting code after execution.
@@ -54,7 +54,8 @@ Run each item against the plan's OWN snippets and assumptions:
 - **Tenant isolation:** does every DB read/write snippet scope `.eq('company_id', req.companyId)` (or scope through a verified parent for `company_id`-less tables)? Is any company/user id read from `req.body`/`query`/`params` instead of `requireAuth`?
 - **Outbound URLs:** any hardcoded host literal? URLs must be built from validated env (frontend host vs API host), never a baked-in domain.
 - **Error surfacing:** any DB/client call whose `.error` is ignored — i.e. a path that could fail silently (HTTP 200 with 0 rows, swallowed exception)? Errors must be checked and surfaced.
-- **DB constraints:** any `ON CONFLICT`/upsert that could target a *partial* unique index (illegal — use pre-filter + plain insert)? Any `DROP+ADD CHECK`/constraint migration that could clobber values, or a schema change with readers not re-grepped (expand-contract)?
+- **DB constraints:** any `ON CONFLICT`/upsert that could target a *partial* unique index (illegal — use pre-filter + plain insert)? After any rename, does EVERY conflict-target list and RPC parameter key match the LIVE catalog (pg_indexes / pg_get_function_arguments) — not the swept source text? Any `DROP+ADD CHECK`/constraint migration that could clobber values, or a schema change with readers not re-grepped (expand-contract)?
+- **Backfills:** for any `UPDATE … SET new = old`, are the affected tables' triggers inventoried (updated_at stampers!) and is there a snapshot-or-disable-trigger step BEFORE the write? A backfill plan without a trigger inventory is incomplete.
 - **Route/middleware:** public/unauthenticated routes mounted before blanket auth? CORS allows the expected origins?
 - **Stale references:** are file paths/line numbers/code marked illustrative, with a "locate by content + re-verify signatures" instruction — not absolute-line edits?
 - **Build/verify gates:** does the plan name the *real* gates (the typechecking build, the live/integration check), not just a bundler that skips type errors? Is there a live/runtime verification step for anything mocked-only tests can't see (route mounting, CORS, real DB constraint semantics, deployed host resolution)?

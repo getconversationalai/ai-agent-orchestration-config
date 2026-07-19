@@ -270,6 +270,20 @@ Rules for data-field / storage migrations (e.g. moving a value from `metadata` J
 - **Keep dual-writing the old location until grep shows zero readers remain.** Dropping the old write "to avoid divergence" while any consumer still reads it converts a loud failure into a silent wrong-value bug. The old location is retired only after every reader is migrated.
 - **A regression test asserting the consumer reads the new source (not the fallback) is the durable guard — a build is not.**
 
+#### Mechanical sweeps (regex/perl/sed renames) — contract strings and sweep artifacts
+
+A bulk textual sweep is expand-contract's most dangerous executor: it rewrites strings without knowing which are contracts with systems the sweep cannot rename. Real incident (reply-flow 2026-07-19): a ~2000-ref column-rename sweep broke 7 upserts (ON CONFLICT vs un-renamed unique indexes), 5 RPC calls (param names vs un-renamed function signatures), and a compat middleware, and a trigger-side-effect backfill irreversibly overwrote updated_at on 89k rows.
+
+Before sweeping — inventory every occurrence of the old name that is a CONTRACT:
+- DB-interpreted strings: conflict-target column lists, stored-procedure parameter names, trigger/index/constraint names. **Renaming code renames zero DB objects** — each needs a paired migration verified against the LIVE catalog, or exclusion from the sweep.
+- Cross-deploy API fields (query/body/payload keys, multipart field names): old-name traffic outlives the deploy → compat shim, verified through the REAL framework (framework versions change mutation semantics — e.g. Express 5's `req.query` is a lazy getter, so mutating it is a silent no-op; a plain-object mock validates your mental model, not the runtime).
+- Backfill side-effects: list triggers on every table an `UPDATE … SET new=old` touches (updated_at stampers especially); snapshot any column a trigger will clobber, or disable the trigger for the backfill (`SET LOCAL session_replication_role='replica'` — session-local, no table locks). A backfill without a trigger inventory is an unreviewed write.
+
+After sweeping:
+- Grep for degenerate self-fallbacks the sweep manufactures: `\b(\w+)\s*(\?\?|\|\|)\s*\1\b` (an `old ?? new` legacy fallback collapses to `x ?? x` — the fallback is silently deleted).
+- Audit the sweep's diff in TEST files separately: swept assertions can no longer catch the sweep's own breakage, so a green suite is not evidence for the swept surface. Prefer excluding test dirs from the sweep and migrating them by hand.
+- Verify by LIVE calls: one real invocation per swept DB-contract call site (upserts and RPCs fail per-call, not at boot), plus old-name requests through any compat path.
+
 Real example (reply-flow, 2026-06-05): email `html_body` was promoted from `metadata.html_body` to a first-class column. The send path dropped the `metadata.html_body` write (Phase 3) while the web client still read `metadata.html_body`, so display silently fell back to the tag-stripped `message_body` and rendered every app-sent email as a garbled `&nbsp;` blob. The build passed the whole time.
 
 **What this replaces:** This rule supersedes the old "create a branch in the main repo" workflow. You no longer work directly in the main working tree for any code changes. The only things you do in the main working tree are:
