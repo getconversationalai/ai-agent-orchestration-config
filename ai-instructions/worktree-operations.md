@@ -272,6 +272,8 @@ Rules for data-field / storage migrations (e.g. moving a value from `metadata` J
 
 #### Mechanical sweeps (regex/perl/sed renames) — contract strings and sweep artifacts
 
+> The umbrella process for ANY rename or schema change (classification matrix, boundary inventory, phased execution, live-evidence verification) is `renames-and-schema-changes.md` — read it first; this section is the sweep-specific hygiene within that process.
+
 A bulk textual sweep is expand-contract's most dangerous executor: it rewrites strings without knowing which are contracts with systems the sweep cannot rename. Real incident (reply-flow 2026-07-19): a ~2000-ref column-rename sweep broke 7 upserts (ON CONFLICT vs un-renamed unique indexes), 5 RPC calls (param names vs un-renamed function signatures), and a compat middleware, and a trigger-side-effect backfill irreversibly overwrote updated_at on 89k rows.
 
 Before sweeping — inventory every occurrence of the old name that is a CONTRACT:

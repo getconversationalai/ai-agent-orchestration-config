@@ -11,6 +11,8 @@ sections:
   - Writing migration files
   - Fallback - Management API script (booking_pro_saas)
 ---
+
+> Any schema CHANGE (rename/add/drop/retype tables, columns, constraints, triggers, functions, enums) follows the standard process in `renames-and-schema-changes.md` — classification matrix, boundary inventory, phased execution, live verification. This doc covers Supabase-specific mechanics.
 # Supabase Database Operations
 > Navigation: read this frontmatter + section list, then `grep` the `##` heading you need and read only that section. Do not read the whole doc.
 
