@@ -52,7 +52,6 @@
     ],
     "defaultMode": "bypassPermissions"
   },
-  "model": "sonnet",
   "hooks": {
     "PreToolUse": [
       {
@@ -253,9 +252,10 @@
       }
     }
   },
-  "effortLevel": "low",
+  "effortLevel": "medium",
   "fastMode": true,
   "skipDangerousModePermissionPrompt": true,
   "skipWorkflowUsageWarning": true,
-  "agentPushNotifEnabled": true
+  "agentPushNotifEnabled": true,
+  "model": "sonnet"
 }
